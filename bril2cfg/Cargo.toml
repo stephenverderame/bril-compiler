@@ -1,0 +1,15 @@
+[package]
+name = "bril2cfg"
+version = "0.1.0"
+edition = "2021"
+authors = ["Stephen Verderame"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cfg = { path = "../cfg" }
+
+[dependencies.bril-rs]
+version = "0.1.0"
+path = "../bril-rs"
+features = ["ssa", "memory", "float", "speculate", "position"]

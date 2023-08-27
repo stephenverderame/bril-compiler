@@ -1,0 +1,2 @@
+command = "cat {filename} | bril2json | cargo run --bin bril2cfg"
+return_code = 0

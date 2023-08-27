@@ -1,0 +1,14 @@
+@main {
+    jmp .foo;
+.foo:
+    jmp .bar;
+.bar:
+    jmp .baz;
+.baz:
+.pizaz:
+.wooo:
+    x: int = const 42;
+    jmp .caz;
+.caz:
+    print x;
+}

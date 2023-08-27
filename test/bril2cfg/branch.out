@@ -1,0 +1,24 @@
+digraph {
+	subgraph cluster_main {
+		label="main";
+		rankdir="TB";
+		0 [label="Start", shape="ellipse"];
+		2 [label="x := 42", shape="ellipse"];
+		3 [label="y := 30", shape="ellipse"];
+		4 [label="y2 := 5", shape="ellipse"];
+		5 [label="z := y - y2", shape="ellipse"];
+		6 [label="b := x < z", shape="ellipse"];
+		7 [label="if b", shape="ellipse"];
+		8 [label="print x", shape="ellipse"];
+		10 [label="print y", shape="ellipse"];
+
+		0 -> 2;
+		2 -> 3;
+		3 -> 4;
+		4 -> 5;
+		5 -> 6;
+		6 -> 7;
+		7 -> 8 [label="T"];
+		7 -> 10 [label="F"];
+	}
+}

@@ -1,0 +1,12 @@
+digraph {
+	subgraph cluster_main {
+		label="main";
+		rankdir="TB";
+		0 [label="Start", shape="ellipse"];
+		3 [label="x := 10", shape="ellipse"];
+		4 [label="print x", shape="ellipse"];
+
+		0 -> 3;
+		3 -> 4;
+	}
+}

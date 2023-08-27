@@ -1,0 +1,13 @@
+[package]
+name = "cfg"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dependencies.bril-rs]
+version = "0.1.0"
+path = "../bril-rs"
+features = ["ssa", "memory", "float", "speculate", "position"]
