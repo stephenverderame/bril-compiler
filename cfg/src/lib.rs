@@ -5,9 +5,11 @@ use bril_rs::{Code, EffectOps, Function, Instruction, ValueOps};
 
 /// Id of the start node in the CFG
 pub const CFG_START_ID: usize = 0;
+/// Id of the end node in the CFG
 pub const CFG_END_ID: usize = CFG_START_ID + 1;
 
 /// A node in the CFG
+#[derive(Clone, Debug, PartialEq)]
 pub enum CfgNode {
     Start,
     Instr(Instruction),
@@ -15,6 +17,7 @@ pub enum CfgNode {
 }
 
 /// The destination of an edge in the CFG
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CfgEdgeTo {
     Next(usize),
     Branch { true_node: usize, false_node: usize },
@@ -22,6 +25,7 @@ pub enum CfgEdgeTo {
 }
 
 /// The control flow graph of a function
+#[derive(Clone, Debug)]
 pub struct Cfg {
     pub blocks: BTreeMap<usize, CfgNode>,
     pub adj_lst: HashMap<usize, CfgEdgeTo>,
@@ -81,8 +85,11 @@ impl Cfg {
         // cfg adjacency list
         let mut adj_lst = HashMap::new();
         // the last id of an instruction included in the CFG
+        // this is to keep track of a sequential stream of instructions
         let mut last_id = Some(CFG_START_ID);
         // a map from a destination node to the source nodes of some incoming endges
+        // a pair `(dest, srcs)` means that there is an edge from each node in `srcs` to `dest`
+        // that needs to be added to the CFG
         let mut pending_edges = HashMap::new();
         adj_lst.insert(CFG_END_ID, CfgEdgeTo::Terminal);
         for (id, instr) in blocks.iter().filter_map(|(id, instr)| match instr {
@@ -90,6 +97,9 @@ impl Cfg {
             CfgNode::Start | CfgNode::End => None,
         }) {
             // previous instruction(s) that have edges to this instruction
+            //
+            // all nodes that jump to a label on this instruction plus
+            // all pending edges for this node
             let from_ids = last_id.map_or_else(
                 || {
                     labels_rev
@@ -122,16 +132,23 @@ impl Cfg {
                 last_id = Some(*id);
             }
         }
+        // handle any pending edges to the end node
         if let Some(edges_to_end) = pending_edges.get(&CFG_END_ID) {
             Self::add_edge(&mut adj_lst, edges_to_end, CFG_END_ID);
         }
+        // make the transition from the last sequntial instruction to be
+        // to the end node.
         if let Some(last_id) = last_id {
-            adj_lst.insert(last_id, CfgEdgeTo::Terminal);
+            adj_lst.insert(last_id, CfgEdgeTo::Next(CFG_END_ID));
         }
         Self { blocks, adj_lst }.clean()
     }
 
     /// Remove unreachable nodes from the CFG
+    /// Unreachable nodes occur when we splice out jumps when
+    /// constructing the cfg. Prior to cleaning, the
+    /// adjacency list may contain such jumps that have
+    /// been spliced out. Cleaning will remove these jumps
     fn clean(mut self) -> Self {
         let mut keeps = vec![CFG_START_ID];
         for edge in self.adj_lst.values() {
@@ -293,8 +310,8 @@ impl CfgNode {
                 }
                 write!(f, "}}")
             }
-            ValueOps::Char2int => write!(f, "{dest} := (char){arg_0}"),
-            ValueOps::Int2char => write!(f, "{dest} := (int){arg_0}"),
+            ValueOps::Char2int => write!(f, "{dest} := (int){arg_0}"),
+            ValueOps::Int2char => write!(f, "{dest} := (char){arg_0}"),
             ValueOps::Alloc => write!(f, "{dest} := alloc {arg_0}"),
             ValueOps::Load => write!(f, "{dest} := *{arg_0}"),
         }
@@ -366,8 +383,8 @@ impl CfgNode {
 impl std::fmt::Display for CfgNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Start => write!(f, "Start"),
-            Self::End => write!(f, "End"),
+            Self::Start => write!(f, "START"),
+            Self::End => write!(f, "END"),
             Self::Instr(instr) => match instr {
                 Instruction::Constant { dest, value, .. } => {
                     write!(f, "{dest} := {value}")

@@ -3,6 +3,18 @@ use bril_rs::{load_program, load_program_from_read, Program};
 use cfg::{Cfg, CfgEdgeTo, CFG_END_ID};
 use std::{env, fs::File};
 
+/// # bril2cfg
+/// A tool to convert a bril program to a dot file
+/// representing the control flow graph of each function
+/// in the program.
+/// ## Usage
+/// `bril2cfg <bril json on stdin>`
+/// OR specify a file
+/// `bril2cfg -f <bril json file path>`
+/// ## Example
+/// `ts2bril test.ts | bril2cfg`
+/// OR
+/// `bril2cfg -f test.json`
 fn main() {
     if env::args().len() >= 2 && env::args().nth(1).unwrap() == "--help" {
         eprintln!("Usage: bril2cfg <bril json on stdin>");
@@ -30,6 +42,10 @@ fn print_prog(prog: Program) {
 }
 
 /// Write a dot file for the given CFG.
+/// The end node is not printed
+///
+/// We print each function as a clustered subgraph
+/// of a digraph
 fn print_dot(cfg: &Cfg, name: &str) {
     println!("\tsubgraph cluster_{name} {{");
     println!("\t\tlabel=\"{name}\";");

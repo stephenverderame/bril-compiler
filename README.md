@@ -2,7 +2,9 @@
 
 This is a repository containing implementations of 
 analyses, optimizations, and other passes for CS 6120
-based on the [Big Red Intermediate Language](https://capra.cs.cornell.edu/bril/intro.html)
+using the [Big Red Intermediate Language](https://capra.cs.cornell.edu/bril/intro.html)
+
+Each of these tools is developed unix style and communicates via the shell.
 
 ## Contents
 
