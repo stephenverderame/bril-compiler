@@ -52,7 +52,7 @@ fn print_dot(cfg: &Cfg, name: &str) {
     println!("\t\trankdir=\"TB\";");
     for (i, node) in &cfg.blocks {
         if *i != CFG_END_ID {
-            println!("\t\t{i} [label=\"{node}\", shape=\"ellipse\"];");
+            println!("\t\t{name}_{i} [label=\"{node}\", shape=\"ellipse\"];");
         }
     }
     println!();
@@ -64,15 +64,19 @@ fn print_dot(cfg: &Cfg, name: &str) {
                 false_node,
             } => {
                 if *true_node != CFG_END_ID {
-                    println!("\t\t{i} -> {true_node} [label=\"T\"];");
+                    println!(
+                        "\t\t{name}_{i} -> {name}_{true_node} [label=\"T\"];"
+                    );
                 }
                 if *false_node != CFG_END_ID {
-                    println!("\t\t{i} -> {false_node} [label=\"F\"];");
+                    println!(
+                        "\t\t{name}_{i} -> {name}_{false_node} [label=\"F\"];"
+                    );
                 }
             }
             CfgEdgeTo::Next(next_node) => {
                 if *next_node != CFG_END_ID {
-                    println!("\t\t{i} -> {next_node};");
+                    println!("\t\t{name}_{i} -> {name}_{next_node};");
                 }
             }
             CfgEdgeTo::Terminal => {}

@@ -1,0 +1,40 @@
+digraph {
+	subgraph cluster_foo {
+		label="foo";
+		rankdir="TB";
+		foo_0 [label="START", shape="ellipse"];
+		foo_2 [label="x := a + b", shape="ellipse"];
+		foo_3 [label="y := x * c", shape="ellipse"];
+		foo_4 [label="return y", shape="ellipse"];
+
+		foo_0 -> foo_2;
+		foo_2 -> foo_3;
+		foo_3 -> foo_4;
+	}
+	subgraph cluster_bar {
+		label="bar";
+		rankdir="TB";
+		bar_0 [label="START", shape="ellipse"];
+		bar_2 [label="print g", shape="ellipse"];
+		bar_3 [label="print f", shape="ellipse"];
+
+		bar_0 -> bar_2;
+		bar_2 -> bar_3;
+	}
+	subgraph cluster_main {
+		label="main";
+		rankdir="TB";
+		main_0 [label="START", shape="ellipse"];
+		main_2 [label="a := 10", shape="ellipse"];
+		main_3 [label="b := 20", shape="ellipse"];
+		main_4 [label="c := 5", shape="ellipse"];
+		main_5 [label="d := foo(a, b, c)", shape="ellipse"];
+		main_6 [label="bar(d, d)", shape="ellipse"];
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4;
+		main_4 -> main_5;
+		main_5 -> main_6;
+	}
+}

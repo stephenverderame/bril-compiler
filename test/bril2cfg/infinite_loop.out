@@ -1,0 +1,9 @@
+digraph {
+	subgraph cluster_main {
+		label="main";
+		rankdir="TB";
+		main_0 [label="START", shape="ellipse"];
+
+		main_0 -> main_0;
+	}
+}

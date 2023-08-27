@@ -2,23 +2,23 @@ digraph {
 	subgraph cluster_main {
 		label="main";
 		rankdir="TB";
-		0 [label="START", shape="ellipse"];
-		2 [label="x := 42", shape="ellipse"];
-		3 [label="y := 30", shape="ellipse"];
-		4 [label="y2 := 5", shape="ellipse"];
-		5 [label="z := y - y2", shape="ellipse"];
-		6 [label="b := x < z", shape="ellipse"];
-		7 [label="if b", shape="ellipse"];
-		8 [label="print x", shape="ellipse"];
-		10 [label="print y", shape="ellipse"];
+		main_0 [label="START", shape="ellipse"];
+		main_2 [label="x := 42", shape="ellipse"];
+		main_3 [label="y := 30", shape="ellipse"];
+		main_4 [label="y2 := 5", shape="ellipse"];
+		main_5 [label="z := y - y2", shape="ellipse"];
+		main_6 [label="b := x < z", shape="ellipse"];
+		main_7 [label="if b", shape="ellipse"];
+		main_8 [label="print x", shape="ellipse"];
+		main_10 [label="print y", shape="ellipse"];
 
-		0 -> 2;
-		2 -> 3;
-		3 -> 4;
-		4 -> 5;
-		5 -> 6;
-		6 -> 7;
-		7 -> 8 [label="T"];
-		7 -> 10 [label="F"];
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4;
+		main_4 -> main_5;
+		main_5 -> main_6;
+		main_6 -> main_7;
+		main_7 -> main_8 [label="T"];
+		main_7 -> main_10 [label="F"];
 	}
 }

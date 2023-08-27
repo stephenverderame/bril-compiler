@@ -2,11 +2,11 @@ digraph {
 	subgraph cluster_main {
 		label="main";
 		rankdir="TB";
-		0 [label="START", shape="ellipse"];
-		3 [label="x := 10", shape="ellipse"];
-		4 [label="print x", shape="ellipse"];
+		main_0 [label="START", shape="ellipse"];
+		main_3 [label="x := 10", shape="ellipse"];
+		main_4 [label="print x", shape="ellipse"];
 
-		0 -> 3;
-		3 -> 4;
+		main_0 -> main_3;
+		main_3 -> main_4;
 	}
 }

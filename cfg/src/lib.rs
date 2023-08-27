@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic, clippy::nursery)]
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use bril_rs::{Code, EffectOps, Function, Instruction, ValueOps};
 
@@ -36,8 +36,6 @@ impl Cfg {
     pub fn from(f: &Function) -> Self {
         // map from label to node id
         let mut labels = HashMap::new();
-        // map from node id to labels
-        let mut labels_rev = HashMap::new();
         // the labels we encounter before the next instruction
         let mut active_labels = Vec::new();
         // map from node id to instruction
@@ -56,7 +54,6 @@ impl Cfg {
                     for lbl in &active_labels {
                         labels.insert(lbl.clone(), i);
                     }
-                    labels_rev.insert(i, active_labels.clone());
                     i += 1;
                     active_labels.clear();
                 }
@@ -65,9 +62,8 @@ impl Cfg {
         // any labels that are still active are at the end of the function
         for lbl in &active_labels {
             labels.insert(lbl.clone(), CFG_END_ID);
-            labels_rev.insert(CFG_END_ID, active_labels.clone());
         }
-        Self::gen_cfg_from_lbls_and_blocks(&labels, blocks, &labels_rev)
+        Self::gen_cfg_from_lbls_and_blocks(&labels, blocks)
     }
 
     /// Generate a CFG from a map from label to node id and a map from node id to instruction
@@ -80,68 +76,115 @@ impl Cfg {
     fn gen_cfg_from_lbls_and_blocks(
         labels_map: &HashMap<String, usize>,
         blocks: BTreeMap<usize, CfgNode>,
-        labels_rev: &HashMap<usize, Vec<String>>,
     ) -> Self {
         // cfg adjacency list
         let mut adj_lst = HashMap::new();
         // the last id of an instruction included in the CFG
         // this is to keep track of a sequential stream of instructions
         let mut last_id = Some(CFG_START_ID);
-        // a map from a destination node to the source nodes of some incoming endges
-        // a pair `(dest, srcs)` means that there is an edge from each node in `srcs` to `dest`
-        // that needs to be added to the CFG
-        let mut pending_edges = HashMap::new();
         adj_lst.insert(CFG_END_ID, CfgEdgeTo::Terminal);
         for (id, instr) in blocks.iter().filter_map(|(id, instr)| match instr {
             CfgNode::Instr(instr) => Some((id, instr)),
             CfgNode::Start | CfgNode::End => None,
         }) {
-            // previous instruction(s) that have edges to this instruction
-            //
-            // all nodes that jump to a label on this instruction plus
-            // all pending edges for this node
-            let from_ids = last_id.map_or_else(
-                || {
-                    labels_rev
-                        .get(id)
-                        .unwrap()
-                        .iter()
-                        .map(|lbl| labels_map.get(lbl).unwrap())
-                        .copied()
-                        .chain(
-                            pending_edges
-                                .get(id)
-                                .unwrap_or(&Vec::new())
-                                .iter()
-                                .copied(),
-                        )
-                        .collect()
-                },
-                |id| vec![id],
-            );
             if !Self::handle_effects(
                 instr,
                 *id,
                 labels_map,
                 &mut adj_lst,
                 &mut last_id,
-                &mut pending_edges,
-                &from_ids,
             ) {
-                Self::add_edge(&mut adj_lst, &from_ids, *id);
+                Self::add_edge(&mut adj_lst, &last_id, *id);
                 last_id = Some(*id);
             }
-        }
-        // handle any pending edges to the end node
-        if let Some(edges_to_end) = pending_edges.get(&CFG_END_ID) {
-            Self::add_edge(&mut adj_lst, edges_to_end, CFG_END_ID);
         }
         // make the transition from the last sequntial instruction to be
         // to the end node.
         if let Some(last_id) = last_id {
             adj_lst.insert(last_id, CfgEdgeTo::Next(CFG_END_ID));
         }
+        Self::splice_out_goto_and_make_self(adj_lst, blocks, labels_map)
+    }
+
+    /// Splice out jumps from the `adj_list`, constructs and CFG with
+    /// the resulant `adj_list` and blocks, and then cleans the CFG
+    /// which removes unreachable nodes
+    fn splice_out_goto_and_make_self(
+        mut adj_lst: HashMap<usize, CfgEdgeTo>,
+        blocks: BTreeMap<usize, CfgNode>,
+        labels_map: &HashMap<String, usize>,
+    ) -> Self {
+        for (self_id, edge) in &mut adj_lst {
+            match edge {
+                CfgEdgeTo::Branch {
+                    true_node,
+                    false_node,
+                } => {
+                    *true_node = Self::get_next_real_node(
+                        &blocks, *true_node, labels_map, None,
+                    )
+                    .unwrap_or(*self_id);
+                    *false_node = Self::get_next_real_node(
+                        &blocks,
+                        *false_node,
+                        labels_map,
+                        None,
+                    )
+                    .unwrap_or(*self_id);
+                }
+                CfgEdgeTo::Next(next) => {
+                    *next = Self::get_next_real_node(
+                        &blocks, *next, labels_map, None,
+                    )
+                    .unwrap_or(*self_id);
+                }
+                CfgEdgeTo::Terminal => {}
+            }
+        }
         Self { blocks, adj_lst }.clean()
+    }
+
+    /// If `id` is a jump instruction, return the id of the next real (non-jump)
+    /// node by following the chain of jumps.
+    /// Otherwise, return `id`
+    ///
+    /// If `id` is the starting id, then we have an infinite loop
+    /// and we return `None`
+    /// # Arguments
+    /// * `blocks` - A map from node id to instruction
+    /// * `id` - The id of the jump instruction
+    /// * `labels_map` - A map from label to node id
+    /// * `starting_id` - The id of the first jump instruction in the chain or
+    /// `None` if this is the first jump instruction in the chain
+    ///
+    /// # Returns
+    /// * `Some(id)` where `id` is the id of the next real node or `None` if
+    ///  there is an infinite loop
+    fn get_next_real_node(
+        blocks: &BTreeMap<usize, CfgNode>,
+        id: usize,
+        labels_map: &HashMap<String, usize>,
+        starting_id: Option<usize>,
+    ) -> Option<usize> {
+        if starting_id.map_or(false, |first_id| id == first_id) {
+            // infinite loop
+            return None;
+        }
+        if let Some(CfgNode::Instr(Instruction::Effect {
+            op: EffectOps::Jump,
+            labels,
+            ..
+        })) = blocks.get(&id)
+        {
+            Self::get_next_real_node(
+                blocks,
+                *labels_map.get(labels.get(0).unwrap()).unwrap(),
+                labels_map,
+                starting_id.or(Some(id)),
+            )
+        } else {
+            Some(id)
+        }
     }
 
     /// Remove unreachable nodes from the CFG
@@ -150,20 +193,33 @@ impl Cfg {
     /// adjacency list may contain such jumps that have
     /// been spliced out. Cleaning will remove these jumps
     fn clean(mut self) -> Self {
-        let mut keeps = vec![CFG_START_ID];
-        for edge in self.adj_lst.values() {
-            match edge {
-                CfgEdgeTo::Next(next) => {
-                    keeps.push(*next);
+        let mut keeps = vec![];
+        let mut q = VecDeque::new();
+        q.push_back(CFG_START_ID);
+        while !q.is_empty() {
+            let reachable = q.pop_front().unwrap();
+            if keeps.contains(&reachable) {
+                continue;
+            }
+            keeps.push(reachable);
+            match self.adj_lst.get(&reachable) {
+                Some(CfgEdgeTo::Next(next)) => {
+                    if !keeps.contains(next) {
+                        q.push_back(*next);
+                    }
                 }
-                CfgEdgeTo::Branch {
+                Some(CfgEdgeTo::Branch {
                     true_node,
                     false_node,
-                } => {
-                    keeps.push(*true_node);
-                    keeps.push(*false_node);
+                }) => {
+                    if !keeps.contains(true_node) {
+                        q.push_back(*true_node);
+                    }
+                    if !keeps.contains(false_node) {
+                        q.push_back(*false_node);
+                    }
                 }
-                CfgEdgeTo::Terminal => {}
+                Some(CfgEdgeTo::Terminal) | None => {}
             }
         }
         self.adj_lst.retain(|id, _| keeps.contains(id));
@@ -174,10 +230,10 @@ impl Cfg {
     /// Add an edge from each node in `froms` to `to`.
     fn add_edge(
         adj_lst: &mut HashMap<usize, CfgEdgeTo>,
-        froms: &[usize],
+        froms: &Option<usize>,
         to: usize,
     ) {
-        for from in froms {
+        if let Some(from) = froms {
             adj_lst.insert(*from, CfgEdgeTo::Next(to));
         }
     }
@@ -192,8 +248,6 @@ impl Cfg {
     /// * `labels_map` - A map from label to node id
     /// * `adj_lst` - The adjacency list of the CFG
     /// * `last_id` - The last id of an instruction included in the CFG
-    /// * `pending_edges` - A map from a destination node to the source nodes of some incoming endges
-    /// * `from_ids` - The previous instruction(s) that have edges to this instruction
     ///
     /// # Returns
     /// * `true` if the instruction was an effect instruction and was handled
@@ -203,8 +257,6 @@ impl Cfg {
         labels_map: &HashMap<String, usize>,
         adj_lst: &mut HashMap<usize, CfgEdgeTo>,
         last_id: &mut Option<usize>,
-        pending_edges: &mut HashMap<usize, Vec<usize>>,
-        from_ids: &[usize],
     ) -> bool {
         if let Instruction::Effect {
             op,
@@ -225,25 +277,24 @@ impl Cfg {
                             false_node,
                         },
                     );
-                    Self::add_edge(adj_lst, from_ids, id);
+                    Self::add_edge(adj_lst, last_id, id);
                     *last_id = None;
                     true
                 }
                 EffectOps::Jump => {
-                    assert_eq!(labels.len(), 1);
-                    let node = labels_map.get(&labels[0]).unwrap();
-                    pending_edges
-                        .entry(*node)
-                        .or_insert_with(Vec::new)
-                        .extend(from_ids);
+                    let next = *labels_map.get(&labels[0]).unwrap();
+                    Self::add_edge(adj_lst, last_id, id);
+                    Self::add_edge(adj_lst, &Some(id), next);
                     *last_id = None;
                     true
                 }
                 EffectOps::Return => {
-                    adj_lst.insert(id, CfgEdgeTo::Next(CFG_END_ID));
+                    Self::add_edge(adj_lst, last_id, id);
+                    Self::add_edge(adj_lst, &Some(id), CFG_END_ID);
                     *last_id = None;
                     true
                 }
+                // do not change last_id
                 EffectOps::Nop => true,
                 _ => false,
             }
@@ -348,7 +399,7 @@ impl CfgNode {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         match op {
-            EffectOps::Jump => panic!("Jump should not be in CFG"),
+            EffectOps::Jump => write!(f, "goto {}", labels.get(0).unwrap()),
             EffectOps::Branch => {
                 let cond = args.get(0).unwrap();
                 write!(f, "if {cond}")
@@ -356,7 +407,13 @@ impl CfgNode {
             EffectOps::Call => {
                 Self::fmt_call(None, funcs.get(0).unwrap(), args, f)
             }
-            EffectOps::Return => write!(f, "return"),
+            EffectOps::Return => {
+                write!(f, "return")?;
+                if let Some(arg) = args.get(0) {
+                    write!(f, " {arg}")?;
+                }
+                write!(f, "")
+            }
             EffectOps::Print => write!(f, "print {}", args.get(0).unwrap()),
             EffectOps::Nop => panic!("Nop should not be in CFG"),
             EffectOps::Store => {

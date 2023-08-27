@@ -1,0 +1,115 @@
+digraph {
+	subgraph cluster_main {
+		label="main";
+		rankdir="TB";
+		main_0 [label="START", shape="ellipse"];
+		main_2 [label="v0 := 23789216", shape="ellipse"];
+		main_3 [label="x := v0", shape="ellipse"];
+		main_4 [label="v1 := 1748698766", shape="ellipse"];
+		main_5 [label="y := v1", shape="ellipse"];
+		main_6 [label="v2 := x", shape="ellipse"];
+		main_7 [label="v3 := y", shape="ellipse"];
+		main_8 [label="f := gcd(v2, v3)", shape="ellipse"];
+		main_9 [label="f := f", shape="ellipse"];
+		main_10 [label="v4 := f", shape="ellipse"];
+		main_11 [label="print v4", shape="ellipse"];
+		main_12 [label="v5 := 0", shape="ellipse"];
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4;
+		main_4 -> main_5;
+		main_5 -> main_6;
+		main_6 -> main_7;
+		main_7 -> main_8;
+		main_8 -> main_9;
+		main_9 -> main_10;
+		main_10 -> main_11;
+		main_11 -> main_12;
+	}
+	subgraph cluster_mod {
+		label="mod";
+		rankdir="TB";
+		mod_0 [label="START", shape="ellipse"];
+		mod_2 [label="v0 := r", shape="ellipse"];
+		mod_3 [label="v1 := r", shape="ellipse"];
+		mod_4 [label="v2 := s", shape="ellipse"];
+		mod_5 [label="v3 := v1 / v2", shape="ellipse"];
+		mod_6 [label="v4 := s", shape="ellipse"];
+		mod_7 [label="v5 := v3 * v4", shape="ellipse"];
+		mod_8 [label="v6 := v0 - v5", shape="ellipse"];
+		mod_9 [label="result := v6", shape="ellipse"];
+		mod_10 [label="v7 := result", shape="ellipse"];
+		mod_11 [label="return v7", shape="ellipse"];
+
+		mod_0 -> mod_2;
+		mod_2 -> mod_3;
+		mod_3 -> mod_4;
+		mod_4 -> mod_5;
+		mod_5 -> mod_6;
+		mod_6 -> mod_7;
+		mod_7 -> mod_8;
+		mod_8 -> mod_9;
+		mod_9 -> mod_10;
+		mod_10 -> mod_11;
+	}
+	subgraph cluster_gcd {
+		label="gcd";
+		rankdir="TB";
+		gcd_0 [label="START", shape="ellipse"];
+		gcd_2 [label="v0 := 0", shape="ellipse"];
+		gcd_3 [label="zero := v0", shape="ellipse"];
+		gcd_4 [label="v1 := b", shape="ellipse"];
+		gcd_5 [label="v2 := zero", shape="ellipse"];
+		gcd_6 [label="v3 := v1 == v2", shape="ellipse"];
+		gcd_7 [label="cond_temp := v3", shape="ellipse"];
+		gcd_8 [label="v4 := !cond_temp", shape="ellipse"];
+		gcd_9 [label="cond := v4", shape="ellipse"];
+		gcd_10 [label="v6 := cond", shape="ellipse"];
+		gcd_11 [label="if v6", shape="ellipse"];
+		gcd_12 [label="v7 := b", shape="ellipse"];
+		gcd_13 [label="temp := v7", shape="ellipse"];
+		gcd_14 [label="v8 := a", shape="ellipse"];
+		gcd_15 [label="v9 := b", shape="ellipse"];
+		gcd_16 [label="v10 := mod(v8, v9)", shape="ellipse"];
+		gcd_17 [label="b := v10", shape="ellipse"];
+		gcd_18 [label="v11 := temp", shape="ellipse"];
+		gcd_19 [label="a := v11", shape="ellipse"];
+		gcd_20 [label="v12 := b", shape="ellipse"];
+		gcd_21 [label="v13 := zero", shape="ellipse"];
+		gcd_22 [label="v14 := v12 == v13", shape="ellipse"];
+		gcd_23 [label="cond_temp := v14", shape="ellipse"];
+		gcd_24 [label="v15 := !cond_temp", shape="ellipse"];
+		gcd_25 [label="cond := v15", shape="ellipse"];
+		gcd_27 [label="v16 := a", shape="ellipse"];
+		gcd_28 [label="return v16", shape="ellipse"];
+
+		gcd_0 -> gcd_2;
+		gcd_2 -> gcd_3;
+		gcd_3 -> gcd_4;
+		gcd_4 -> gcd_5;
+		gcd_5 -> gcd_6;
+		gcd_6 -> gcd_7;
+		gcd_7 -> gcd_8;
+		gcd_8 -> gcd_9;
+		gcd_9 -> gcd_10;
+		gcd_10 -> gcd_11;
+		gcd_11 -> gcd_12 [label="T"];
+		gcd_11 -> gcd_27 [label="F"];
+		gcd_12 -> gcd_13;
+		gcd_13 -> gcd_14;
+		gcd_14 -> gcd_15;
+		gcd_15 -> gcd_16;
+		gcd_16 -> gcd_17;
+		gcd_17 -> gcd_18;
+		gcd_18 -> gcd_19;
+		gcd_19 -> gcd_20;
+		gcd_20 -> gcd_21;
+		gcd_21 -> gcd_22;
+		gcd_22 -> gcd_23;
+		gcd_23 -> gcd_24;
+		gcd_24 -> gcd_25;
+		gcd_25 -> gcd_10;
+		gcd_27 -> gcd_28;
+	}
+}
