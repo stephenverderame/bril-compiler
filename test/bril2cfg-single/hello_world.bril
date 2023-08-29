@@ -1,0 +1,6 @@
+@main {
+    jmp .foo;
+.foo:
+    x: int = const 10;
+    print x;
+}

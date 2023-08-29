@@ -1,0 +1,153 @@
+digraph {
+	subgraph cluster_pack {
+		label="pack(size: int, n1: int, n2: int, n3: int, n4: int, n5: int)";
+		rankdir="TB";
+		pack_0 [label="START", shape="rectangle", style="rounded"];
+		pack_2 [label="one := 1", shape="rectangle", style="rounded"];
+		pack_3 [label="i := 0", shape="rectangle", style="rounded"];
+		pack_4 [label="array := alloc size", shape="rectangle", style="rounded"];
+		pack_5 [label="loc := array + i", shape="rectangle", style="rounded"];
+		pack_6 [label="*loc := n1", shape="rectangle", style="rounded"];
+		pack_7 [label="i := i + one", shape="rectangle", style="rounded"];
+		pack_8 [label="loc := array + i", shape="rectangle", style="rounded"];
+		pack_9 [label="*loc := n2", shape="rectangle", style="rounded"];
+		pack_10 [label="i := i + one", shape="rectangle", style="rounded"];
+		pack_11 [label="loc := array + i", shape="rectangle", style="rounded"];
+		pack_12 [label="*loc := n3", shape="rectangle", style="rounded"];
+		pack_13 [label="i := i + one", shape="rectangle", style="rounded"];
+		pack_14 [label="loc := array + i", shape="rectangle", style="rounded"];
+		pack_15 [label="*loc := n4", shape="rectangle", style="rounded"];
+		pack_16 [label="i := i + one", shape="rectangle", style="rounded"];
+		pack_17 [label="loc := array + i", shape="rectangle", style="rounded"];
+		pack_18 [label="*loc := n5", shape="rectangle", style="rounded"];
+		pack_19 [label="return array", shape="rectangle", style="rounded"];
+
+		pack_0 -> pack_2;
+		pack_2 -> pack_3;
+		pack_3 -> pack_4;
+		pack_4 -> pack_5;
+		pack_5 -> pack_6;
+		pack_6 -> pack_7;
+		pack_7 -> pack_8;
+		pack_8 -> pack_9;
+		pack_9 -> pack_10;
+		pack_10 -> pack_11;
+		pack_11 -> pack_12;
+		pack_12 -> pack_13;
+		pack_13 -> pack_14;
+		pack_14 -> pack_15;
+		pack_15 -> pack_16;
+		pack_16 -> pack_17;
+		pack_17 -> pack_18;
+		pack_18 -> pack_19;
+	}
+	subgraph cluster_print_array {
+		label="print_array(array: ptr<int>, size: int)";
+		rankdir="TB";
+		print_array_0 [label="START", shape="rectangle", style="rounded"];
+		print_array_2 [label="i := 0", shape="rectangle", style="rounded"];
+		print_array_3 [label="one := 1", shape="rectangle", style="rounded"];
+		print_array_4 [label="cond := i < size", shape="rectangle", style="rounded"];
+		print_array_5 [label="if cond", shape="rectangle", style="rounded"];
+		print_array_6 [label="loc := array + i", shape="rectangle", style="rounded"];
+		print_array_7 [label="val := *loc", shape="rectangle", style="rounded"];
+		print_array_8 [label="print val", shape="rectangle", style="rounded"];
+		print_array_9 [label="i := i + one", shape="rectangle", style="rounded"];
+		print_array_11 [label="return", shape="rectangle", style="rounded"];
+
+		print_array_0 -> print_array_2;
+		print_array_2 -> print_array_3;
+		print_array_3 -> print_array_4;
+		print_array_4 -> print_array_5;
+		print_array_5 -> print_array_6 [label="T"];
+		print_array_5 -> print_array_11 [label="F"];
+		print_array_6 -> print_array_7;
+		print_array_7 -> print_array_8;
+		print_array_8 -> print_array_9;
+		print_array_9 -> print_array_4;
+	}
+	subgraph cluster_binary_search {
+		label="binary_search(array: ptr<int>, target: int, left: int, right: int)";
+		rankdir="TB";
+		binary_search_0 [label="START", shape="rectangle", style="rounded"];
+		binary_search_2 [label="negone := -1", shape="rectangle", style="rounded"];
+		binary_search_3 [label="zero := 0", shape="rectangle", style="rounded"];
+		binary_search_4 [label="one := 1", shape="rectangle", style="rounded"];
+		binary_search_5 [label="two := 2", shape="rectangle", style="rounded"];
+		binary_search_6 [label="end_cond := left > right", shape="rectangle", style="rounded"];
+		binary_search_7 [label="if end_cond", shape="rectangle", style="rounded"];
+		binary_search_8 [label="mid := left + right", shape="rectangle", style="rounded"];
+		binary_search_9 [label="mid := mid / two", shape="rectangle", style="rounded"];
+		binary_search_10 [label="midloc := array + mid", shape="rectangle", style="rounded"];
+		binary_search_11 [label="midval := *midloc", shape="rectangle", style="rounded"];
+		binary_search_12 [label="equal_cond := target == midval", shape="rectangle", style="rounded"];
+		binary_search_13 [label="if equal_cond", shape="rectangle", style="rounded"];
+		binary_search_14 [label="return mid", shape="rectangle", style="rounded"];
+		binary_search_15 [label="gt_cond := target > midval", shape="rectangle", style="rounded"];
+		binary_search_16 [label="if gt_cond", shape="rectangle", style="rounded"];
+		binary_search_17 [label="newleft := left + one", shape="rectangle", style="rounded"];
+		binary_search_18 [label="output := binary_search(array, target, newleft, right)", shape="rectangle", style="rounded"];
+		binary_search_19 [label="return output", shape="rectangle", style="rounded"];
+		binary_search_20 [label="newright := right - one", shape="rectangle", style="rounded"];
+		binary_search_21 [label="output := binary_search(array, target, left, newright)", shape="rectangle", style="rounded"];
+		binary_search_22 [label="return output", shape="rectangle", style="rounded"];
+		binary_search_23 [label="output := negone", shape="rectangle", style="rounded"];
+		binary_search_24 [label="return output", shape="rectangle", style="rounded"];
+
+		binary_search_0 -> binary_search_2;
+		binary_search_2 -> binary_search_3;
+		binary_search_3 -> binary_search_4;
+		binary_search_4 -> binary_search_5;
+		binary_search_5 -> binary_search_6;
+		binary_search_6 -> binary_search_7;
+		binary_search_7 -> binary_search_23 [label="T"];
+		binary_search_7 -> binary_search_8 [label="F"];
+		binary_search_8 -> binary_search_9;
+		binary_search_9 -> binary_search_10;
+		binary_search_10 -> binary_search_11;
+		binary_search_11 -> binary_search_12;
+		binary_search_12 -> binary_search_13;
+		binary_search_13 -> binary_search_14 [label="T"];
+		binary_search_13 -> binary_search_15 [label="F"];
+		binary_search_15 -> binary_search_16;
+		binary_search_16 -> binary_search_17 [label="T"];
+		binary_search_16 -> binary_search_20 [label="F"];
+		binary_search_17 -> binary_search_18;
+		binary_search_18 -> binary_search_19;
+		binary_search_20 -> binary_search_21;
+		binary_search_21 -> binary_search_22;
+		binary_search_23 -> binary_search_24;
+	}
+	subgraph cluster_main {
+		label="main()";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="target := 7", shape="rectangle", style="rounded"];
+		main_3 [label="size := 5", shape="rectangle", style="rounded"];
+		main_4 [label="e1 := 1", shape="rectangle", style="rounded"];
+		main_5 [label="e2 := 2", shape="rectangle", style="rounded"];
+		main_6 [label="e3 := 6", shape="rectangle", style="rounded"];
+		main_7 [label="e4 := 7", shape="rectangle", style="rounded"];
+		main_8 [label="e5 := 11", shape="rectangle", style="rounded"];
+		main_9 [label="zero := 0", shape="rectangle", style="rounded"];
+		main_10 [label="four := 4", shape="rectangle", style="rounded"];
+		main_11 [label="array := pack(size, e1, e2, e3, e4, e5)", shape="rectangle", style="rounded"];
+		main_12 [label="output := binary_search(array, target, zero, four)", shape="rectangle", style="rounded"];
+		main_13 [label="print output", shape="rectangle", style="rounded"];
+		main_14 [label="free array", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4;
+		main_4 -> main_5;
+		main_5 -> main_6;
+		main_6 -> main_7;
+		main_7 -> main_8;
+		main_8 -> main_9;
+		main_9 -> main_10;
+		main_10 -> main_11;
+		main_11 -> main_12;
+		main_12 -> main_13;
+		main_13 -> main_14;
+	}
+}

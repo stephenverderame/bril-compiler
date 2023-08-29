@@ -3,8 +3,10 @@ digraph {
 		label="main()";
 		rankdir="TB";
 		main_0 [label="START", shape="rectangle", style="rounded"];
-		main_3 [label="x := 10\nprint x\n", shape="rectangle", style="rounded"];
+		main_3 [label="x := 10", shape="rectangle", style="rounded"];
+		main_4 [label="print x", shape="rectangle", style="rounded"];
 
 		main_0 -> main_3;
+		main_3 -> main_4;
 	}
 }

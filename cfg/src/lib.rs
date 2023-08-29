@@ -8,11 +8,24 @@ pub const CFG_START_ID: usize = 0;
 /// Id of the end node in the CFG
 pub const CFG_END_ID: usize = CFG_START_ID + 1;
 
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct BasicBlock {
+    instrs: Vec<Instruction>,
+    terminator: Option<Instruction>,
+}
+
+impl BasicBlock {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.instrs.is_empty() && self.terminator.is_none()
+    }
+}
+
 /// A node in the CFG
 #[derive(Clone, Debug, PartialEq)]
 pub enum CfgNode {
     Start,
-    Instr(Instruction),
+    Block(BasicBlock),
     End,
 }
 
@@ -29,41 +42,139 @@ pub enum CfgEdgeTo {
 pub struct Cfg {
     pub blocks: BTreeMap<usize, CfgNode>,
     pub adj_lst: HashMap<usize, CfgEdgeTo>,
+    pub labels: HashMap<usize, Vec<String>>,
+}
+
+/// Returns true if the instruction is a terminator instruction
+/// # Arguments
+/// * `instr` - The instruction
+/// * `single_mode` - If true, then a basic block is a single instruction
+const fn is_terminator(instr: &Instruction, single_mode: bool) -> bool {
+    single_mode
+        || matches!(
+            instr,
+            Instruction::Effect {
+                op: EffectOps::Jump | EffectOps::Branch | EffectOps::Return,
+                ..
+            }
+        )
 }
 
 impl Cfg {
-    #[must_use]
-    pub fn from(f: &Function) -> Self {
-        // map from label to node id
-        let mut labels = HashMap::new();
+    /// Finishes the current block and adds it to the CFG
+    /// # Arguments
+    /// * `active_block` - The current block
+    /// * `terminator` - The terminator instruction of the block
+    /// * `active_labels` - The labels for the current block
+    /// * `next_id` - The next id to use for a block
+    /// * `blocks` - The map from node id to instruction
+    /// * `labels` - The map from label to node id
+    /// # Returns
+    /// * The next id to use for a block
+    fn add_block(
+        mut active_block: BasicBlock,
+        terminator: Option<Instruction>,
+        active_labels: Vec<String>,
+        next_id: usize,
+        blocks: &mut BTreeMap<usize, CfgNode>,
+        labels: &mut HashMap<String, usize>,
+    ) -> usize {
+        active_block.terminator = terminator;
+        blocks.insert(next_id, CfgNode::Block(active_block));
+        for lbl in active_labels {
+            labels.insert(lbl, next_id);
+        }
+        next_id + 1
+    }
+
+    fn create_blocks_for_instrs(
+        f: &Function,
+        mut id: usize,
+        single_mode: bool,
+        blocks: &mut BTreeMap<usize, CfgNode>,
+        labels: &mut HashMap<String, usize>,
+    ) -> (BasicBlock, Vec<String>, usize) {
+        let mut active_block = BasicBlock::default();
         // the labels we encounter before the next instruction
         let mut active_labels = Vec::new();
-        // map from node id to instruction
-        let mut blocks = BTreeMap::new();
-        // node id counter
-        let mut i = CFG_END_ID + 1;
-        blocks.insert(CFG_START_ID, CfgNode::Start);
-        blocks.insert(CFG_END_ID, CfgNode::End);
         for code in &f.instrs {
             match code {
                 Code::Label { label, .. } => {
+                    if !active_block.is_empty() {
+                        id = Self::add_block(
+                            active_block,
+                            None,
+                            active_labels,
+                            id,
+                            blocks,
+                            labels,
+                        );
+                        active_block = BasicBlock::default();
+                        active_labels = vec![label.clone()];
+                    }
                     active_labels.push(label.clone());
                 }
                 Code::Instruction(instr) => {
-                    blocks.insert(i, CfgNode::Instr(instr.clone()));
-                    for lbl in &active_labels {
-                        labels.insert(lbl.clone(), i);
+                    if is_terminator(instr, single_mode) {
+                        id = Self::add_block(
+                            active_block,
+                            Some(instr.clone()),
+                            active_labels,
+                            id,
+                            blocks,
+                            labels,
+                        );
+                        active_block = BasicBlock::default();
+                        active_labels = Vec::new();
+                    } else {
+                        active_block.instrs.push(instr.clone());
                     }
-                    i += 1;
-                    active_labels.clear();
                 }
             }
         }
-        // any labels that are still active are at the end of the function
-        for lbl in &active_labels {
-            labels.insert(lbl.clone(), CFG_END_ID);
+        (active_block, active_labels, id)
+    }
+
+    /// Generate a CFG from a function
+    /// # Arguments
+    /// * `f` - The function
+    /// * `single_mode` - If true, then a basic block is a single instruction
+    /// # Returns
+    /// * The CFG
+    #[must_use]
+    pub fn from(f: &Function, single_mode: bool) -> Self {
+        // map from label to node id
+        let mut labels = HashMap::new();
+        // map from node id to instruction
+        let mut blocks = BTreeMap::new();
+        // node id counter
+        let i = CFG_END_ID + 1;
+        blocks.insert(CFG_START_ID, CfgNode::Start);
+        blocks.insert(CFG_END_ID, CfgNode::End);
+        let (leftover_block, leftover_labels, next_id) =
+            Self::create_blocks_for_instrs(
+                f,
+                i,
+                single_mode,
+                &mut blocks,
+                &mut labels,
+            );
+        if leftover_block.is_empty() {
+            // any labels that are still active that are at the end of the function
+            for lbl in leftover_labels {
+                labels.insert(lbl, CFG_END_ID);
+            }
+        } else {
+            Self::add_block(
+                leftover_block,
+                None,
+                leftover_labels,
+                next_id,
+                &mut blocks,
+                &mut labels,
+            );
         }
-        Self::gen_cfg_from_lbls_and_blocks(&labels, blocks)
+        Self::gen_cfg_from_lbls_and_blocks(labels, blocks)
     }
 
     /// Generate a CFG from a map from label to node id and a map from node id to instruction
@@ -74,7 +185,7 @@ impl Cfg {
     /// * `labels_rev` - A map from node id to labels
     #[must_use]
     fn gen_cfg_from_lbls_and_blocks(
-        labels_map: &HashMap<String, usize>,
+        labels_map: HashMap<String, usize>,
         blocks: BTreeMap<usize, CfgNode>,
     ) -> Self {
         // cfg adjacency list
@@ -84,16 +195,20 @@ impl Cfg {
         let mut last_id = Some(CFG_START_ID);
         adj_lst.insert(CFG_END_ID, CfgEdgeTo::Terminal);
         for (id, instr) in blocks.iter().filter_map(|(id, instr)| match instr {
-            CfgNode::Instr(instr) => Some((id, instr)),
+            CfgNode::Block(BasicBlock { terminator, .. }) => {
+                Some((id, terminator))
+            }
             CfgNode::Start | CfgNode::End => None,
         }) {
-            if !Self::handle_effects(
-                instr,
-                *id,
-                labels_map,
-                &mut adj_lst,
-                &mut last_id,
-            ) {
+            if instr.is_none()
+                || !Self::handle_effects(
+                    instr.as_ref().unwrap(),
+                    *id,
+                    &labels_map,
+                    &mut adj_lst,
+                    &mut last_id,
+                )
+            {
                 Self::add_edge(&mut adj_lst, &last_id, *id);
                 last_id = Some(*id);
             }
@@ -106,13 +221,14 @@ impl Cfg {
         Self::splice_out_goto_and_make_self(adj_lst, blocks, labels_map)
     }
 
-    /// Splice out jumps from the `adj_list`, constructs and CFG with
+    /// Splice out blocks containing only jumps from the `adj_list`,
+    /// constructs and CFG with
     /// the resulant `adj_list` and blocks, and then cleans the CFG
     /// which removes unreachable nodes
     fn splice_out_goto_and_make_self(
         mut adj_lst: HashMap<usize, CfgEdgeTo>,
         blocks: BTreeMap<usize, CfgNode>,
-        labels_map: &HashMap<String, usize>,
+        labels_map: HashMap<String, usize>,
     ) -> Self {
         for (self_id, edge) in &mut adj_lst {
             match edge {
@@ -121,27 +237,48 @@ impl Cfg {
                     false_node,
                 } => {
                     *true_node = Self::get_next_real_node(
-                        &blocks, *true_node, labels_map, None,
+                        &blocks,
+                        *true_node,
+                        &labels_map,
+                        None,
                     )
                     .unwrap_or(*self_id);
                     *false_node = Self::get_next_real_node(
                         &blocks,
                         *false_node,
-                        labels_map,
+                        &labels_map,
                         None,
                     )
                     .unwrap_or(*self_id);
                 }
                 CfgEdgeTo::Next(next) => {
                     *next = Self::get_next_real_node(
-                        &blocks, *next, labels_map, None,
+                        &blocks,
+                        *next,
+                        &labels_map,
+                        None,
                     )
                     .unwrap_or(*self_id);
                 }
                 CfgEdgeTo::Terminal => {}
             }
         }
-        Self { blocks, adj_lst }.clean()
+        Self {
+            blocks,
+            adj_lst,
+            labels: Self::construct_labels_map(labels_map),
+        }
+        .clean()
+    }
+
+    fn construct_labels_map(
+        labels_map: HashMap<String, usize>,
+    ) -> HashMap<usize, Vec<String>> {
+        let mut labels_rev = HashMap::new();
+        for (lbl, id) in labels_map {
+            labels_rev.entry(id).or_insert_with(Vec::new).push(lbl);
+        }
+        labels_rev
     }
 
     /// If `id` is a jump instruction, return the id of the next real (non-jump)
@@ -170,21 +307,34 @@ impl Cfg {
             // infinite loop
             return None;
         }
-        if let Some(CfgNode::Instr(Instruction::Effect {
-            op: EffectOps::Jump,
-            labels,
-            ..
+        // we don't worry about totally empty blocks
+        // because we never construct a block that is completely empty
+        // ie:
+        // ```
+        // .foo:
+        // .bar:
+        // ```
+        // this is handled
+        if let Some(CfgNode::Block(BasicBlock {
+            terminator:
+                Some(Instruction::Effect {
+                    op: EffectOps::Jump,
+                    labels: dest_labels,
+                    ..
+                }),
+            instrs,
         })) = blocks.get(&id)
         {
-            Self::get_next_real_node(
-                blocks,
-                *labels_map.get(labels.get(0).unwrap()).unwrap(),
-                labels_map,
-                starting_id.or(Some(id)),
-            )
-        } else {
-            Some(id)
+            if instrs.is_empty() {
+                return Self::get_next_real_node(
+                    blocks,
+                    *labels_map.get(dest_labels.get(0).unwrap()).unwrap(),
+                    labels_map,
+                    starting_id.or(Some(id)),
+                );
+            }
         }
+        Some(id)
     }
 
     /// Remove unreachable nodes from the CFG
@@ -204,20 +354,14 @@ impl Cfg {
             keeps.push(reachable);
             match self.adj_lst.get(&reachable) {
                 Some(CfgEdgeTo::Next(next)) => {
-                    if !keeps.contains(next) {
-                        q.push_back(*next);
-                    }
+                    q.push_back(*next);
                 }
                 Some(CfgEdgeTo::Branch {
                     true_node,
                     false_node,
                 }) => {
-                    if !keeps.contains(true_node) {
-                        q.push_back(*true_node);
-                    }
-                    if !keeps.contains(false_node) {
-                        q.push_back(*false_node);
-                    }
+                    q.push_back(*true_node);
+                    q.push_back(*false_node);
                 }
                 Some(CfgEdgeTo::Terminal) | None => {}
             }
@@ -399,7 +543,7 @@ impl CfgNode {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         match op {
-            EffectOps::Jump => write!(f, "goto {}", labels.get(0).unwrap()),
+            EffectOps::Jump => Ok(()),
             EffectOps::Branch => {
                 let cond = args.get(0).unwrap();
                 write!(f, "if {cond}")
@@ -435,6 +579,32 @@ impl CfgNode {
             ),
         }
     }
+
+    fn fmt_instruction(
+        instr: &Instruction,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        match instr {
+            Instruction::Constant { dest, value, .. } => {
+                write!(f, "{dest} := {value}")
+            }
+            Instruction::Value {
+                args,
+                dest,
+                op,
+                funcs,
+                labels,
+                ..
+            } => Self::fmt_val(args, dest, funcs, labels, *op, f),
+            Instruction::Effect {
+                args,
+                funcs,
+                labels,
+                op,
+                ..
+            } => Self::fmt_effect(*op, funcs, args, labels, f),
+        }
+    }
 }
 
 impl std::fmt::Display for CfgNode {
@@ -442,26 +612,16 @@ impl std::fmt::Display for CfgNode {
         match self {
             Self::Start => write!(f, "START"),
             Self::End => write!(f, "END"),
-            Self::Instr(instr) => match instr {
-                Instruction::Constant { dest, value, .. } => {
-                    write!(f, "{dest} := {value}")
+            Self::Block(BasicBlock { instrs, terminator }) => {
+                for (idx, instr) in instrs.iter().chain(terminator).enumerate()
+                {
+                    Self::fmt_instruction(instr, f)?;
+                    if idx < instrs.len() {
+                        write!(f, "\\n")?;
+                    }
                 }
-                Instruction::Value {
-                    args,
-                    dest,
-                    op,
-                    funcs,
-                    labels,
-                    ..
-                } => Self::fmt_val(args, dest, funcs, labels, *op, f),
-                Instruction::Effect {
-                    args,
-                    funcs,
-                    labels,
-                    op,
-                    ..
-                } => Self::fmt_effect(*op, funcs, args, labels, f),
-            },
+                Ok(())
+            }
         }
     }
 }

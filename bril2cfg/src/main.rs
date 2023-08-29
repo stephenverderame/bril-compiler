@@ -1,7 +1,23 @@
 #![warn(clippy::pedantic, clippy::nursery)]
+use atty::Stream;
 use bril_rs::{load_program, load_program_from_read, Program};
 use cfg::{Cfg, CfgEdgeTo, CFG_END_ID};
-use std::{env, fs::File};
+use clap::Parser;
+use std::fs::File;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct CLIArgs {
+    /// The optional file to read from, if not specified a bril program
+    /// is expected on stdin
+    #[arg(short, long)]
+    file: Option<String>,
+
+    /// Specify this flag to make a CFG node for each instruction instead of
+    /// each basic block
+    #[arg(long, default_value_t = false)]
+    single: bool,
+}
 
 /// # bril2cfg
 /// A tool to convert a bril program to a dot file
@@ -16,27 +32,33 @@ use std::{env, fs::File};
 /// OR
 /// `bril2cfg -f test.json`
 fn main() {
-    if env::args().len() >= 2 && env::args().nth(1).unwrap() == "--help" {
-        eprintln!("Usage: bril2cfg <bril json on stdin>");
-        eprintln!("Ex: `ts2bril test.ts | bril2cfg`");
-        eprintln!("Usage: bril2cfg -f <bril json file path>");
-        eprintln!("Ex: `bril2cfg -f test.json`");
-    } else if env::args().len() >= 3 && env::args().nth(1).unwrap() == "-f" {
-        let prog = load_program_from_read(
-            File::open(env::args().nth(2).unwrap()).unwrap(),
-        );
-        print_prog(prog);
+    let args = CLIArgs::parse();
+    if args.file.is_some() {
+        let prog =
+            load_program_from_read(File::open(args.file.unwrap()).unwrap());
+        print_prog(prog, args.single);
+    } else if !atty::is(Stream::Stdin) {
+        print_prog(load_program(), args.single);
     } else {
-        print_prog(load_program());
+        eprintln!("Either specify a file or pipe in a bril program.");
+        eprintln!("See `bril2cfg --help` for more information.");
     }
 }
 
 /// Print the dot file for the given program.
-fn print_prog(prog: Program) {
+fn print_prog(prog: Program, single: bool) {
     println!("digraph {{");
     for f in prog.functions {
-        let cfg = Cfg::from(&f);
-        print_dot(&cfg, &f.name);
+        let cfg = Cfg::from(&f, single);
+        let mut args_name = "(".to_owned();
+        for (idx, a) in f.args.iter().enumerate() {
+            args_name.push_str(&format!("{}: {}", a.name, a.arg_type));
+            if idx != f.args.len() - 1 {
+                args_name.push_str(", ");
+            }
+        }
+        args_name.push(')');
+        print_dot(&cfg, &f.name, &args_name);
     }
     println!("}}");
 }
@@ -46,13 +68,15 @@ fn print_prog(prog: Program) {
 ///
 /// We print each function as a clustered subgraph
 /// of a digraph
-fn print_dot(cfg: &Cfg, name: &str) {
+fn print_dot(cfg: &Cfg, name: &str, args: &str) {
     println!("\tsubgraph cluster_{name} {{");
-    println!("\t\tlabel=\"{name}\";");
+    println!("\t\tlabel=\"{name}{args}\";");
     println!("\t\trankdir=\"TB\";");
     for (i, node) in &cfg.blocks {
         if *i != CFG_END_ID {
-            println!("\t\t{name}_{i} [label=\"{node}\", shape=\"ellipse\"];");
+            println!(
+                "\t\t{name}_{i} [label=\"{node}\", shape=\"rectangle\", style=\"rounded\"];"
+            );
         }
     }
     println!();

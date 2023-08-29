@@ -1,19 +1,13 @@
 digraph {
 	subgraph cluster_main {
-		label="main";
+		label="main()";
 		rankdir="TB";
-		main_0 [label="START", shape="ellipse"];
-		main_2 [label="foo := 10", shape="ellipse"];
-		main_3 [label="bar := 20", shape="ellipse"];
-		main_4 [label="b := foo == bar", shape="ellipse"];
-		main_5 [label="if b", shape="ellipse"];
-		main_9 [label="print b", shape="ellipse"];
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="foo := 10\nbar := 20\nb := foo == bar\nif b", shape="rectangle", style="rounded"];
+		main_6 [label="print b\n", shape="rectangle", style="rounded"];
 
 		main_0 -> main_2;
-		main_2 -> main_3;
-		main_3 -> main_4;
-		main_4 -> main_5;
-		main_5 -> main_9 [label="T"];
-		main_5 -> main_9 [label="F"];
+		main_2 -> main_6 [label="T"];
+		main_2 -> main_6 [label="F"];
 	}
 }

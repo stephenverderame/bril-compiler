@@ -1,0 +1,40 @@
+digraph {
+	subgraph cluster_foo {
+		label="foo(a: int, b: int, c: int)";
+		rankdir="TB";
+		foo_0 [label="START", shape="rectangle", style="rounded"];
+		foo_2 [label="x := a + b", shape="rectangle", style="rounded"];
+		foo_3 [label="y := x * c", shape="rectangle", style="rounded"];
+		foo_4 [label="return y", shape="rectangle", style="rounded"];
+
+		foo_0 -> foo_2;
+		foo_2 -> foo_3;
+		foo_3 -> foo_4;
+	}
+	subgraph cluster_bar {
+		label="bar(g: int, f: int)";
+		rankdir="TB";
+		bar_0 [label="START", shape="rectangle", style="rounded"];
+		bar_2 [label="print g", shape="rectangle", style="rounded"];
+		bar_3 [label="print f", shape="rectangle", style="rounded"];
+
+		bar_0 -> bar_2;
+		bar_2 -> bar_3;
+	}
+	subgraph cluster_main {
+		label="main()";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="a := 10", shape="rectangle", style="rounded"];
+		main_3 [label="b := 20", shape="rectangle", style="rounded"];
+		main_4 [label="c := 5", shape="rectangle", style="rounded"];
+		main_5 [label="d := foo(a, b, c)", shape="rectangle", style="rounded"];
+		main_6 [label="bar(d, d)", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4;
+		main_4 -> main_5;
+		main_5 -> main_6;
+	}
+}

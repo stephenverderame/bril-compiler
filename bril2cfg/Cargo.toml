@@ -8,6 +8,11 @@ authors = ["Stephen Verderame"]
 
 [dependencies]
 cfg = { path = "../cfg" }
+atty = "0.2"
+
+[dependencies.clap]
+version = "4.4.1"
+features = ["derive"]
 
 [dependencies.bril-rs]
 version = "0.1.0"

@@ -1,143 +1,79 @@
 digraph {
 	subgraph cluster_mod2 {
-		label="mod2";
+		label="mod2(a: int)";
 		rankdir="TB";
-		mod2_0 [label="START", shape="ellipse"];
-		mod2_2 [label="two := 2", shape="ellipse"];
-		mod2_3 [label="tmp := a / two", shape="ellipse"];
-		mod2_4 [label="tmp2 := tmp * two", shape="ellipse"];
-		mod2_5 [label="tmp3 := a - tmp2", shape="ellipse"];
-		mod2_6 [label="one := 1", shape="ellipse"];
-		mod2_7 [label="ans := one == tmp3", shape="ellipse"];
-		mod2_8 [label="return ans", shape="ellipse"];
+		mod2_0 [label="START", shape="rectangle", style="rounded"];
+		mod2_2 [label="two := 2\ntmp := a / two\ntmp2 := tmp * two\ntmp3 := a - tmp2\none := 1\nans := one == tmp3\nreturn ans", shape="rectangle", style="rounded"];
 
 		mod2_0 -> mod2_2;
-		mod2_2 -> mod2_3;
-		mod2_3 -> mod2_4;
-		mod2_4 -> mod2_5;
-		mod2_5 -> mod2_6;
-		mod2_6 -> mod2_7;
-		mod2_7 -> mod2_8;
 	}
 	subgraph cluster_loop_subroutine {
-		label="loop_subroutine";
+		label="loop_subroutine(a: int, b: int, c: bool)";
 		rankdir="TB";
-		loop_subroutine_0 [label="START", shape="ellipse"];
-		loop_subroutine_2 [label="i := 0", shape="ellipse"];
-		loop_subroutine_3 [label="n := 63", shape="ellipse"];
-		loop_subroutine_4 [label="one := 1", shape="ellipse"];
-		loop_subroutine_5 [label="two := 2", shape="ellipse"];
-		loop_subroutine_6 [label="ans := 0", shape="ellipse"];
-		loop_subroutine_7 [label="to_add := 1", shape="ellipse"];
-		loop_subroutine_8 [label="cond := i <= n", shape="ellipse"];
-		loop_subroutine_9 [label="if cond", shape="ellipse"];
-		loop_subroutine_10 [label="mod2a := mod2(a)", shape="ellipse"];
-		loop_subroutine_11 [label="mod2b := mod2(b)", shape="ellipse"];
-		loop_subroutine_12 [label="cond_add := mod2a && mod2b", shape="ellipse"];
-		loop_subroutine_13 [label="if c", shape="ellipse"];
-		loop_subroutine_14 [label="cond_add := mod2a || mod2b", shape="ellipse"];
-		loop_subroutine_15 [label="if cond_add", shape="ellipse"];
-		loop_subroutine_16 [label="ans := ans + to_add", shape="ellipse"];
-		loop_subroutine_17 [label="a := a / two", shape="ellipse"];
-		loop_subroutine_18 [label="b := b / two", shape="ellipse"];
-		loop_subroutine_19 [label="to_add := to_add * two", shape="ellipse"];
-		loop_subroutine_20 [label="i := i + one", shape="ellipse"];
-		loop_subroutine_22 [label="return ans", shape="ellipse"];
+		loop_subroutine_0 [label="START", shape="rectangle", style="rounded"];
+		loop_subroutine_2 [label="i := 0\nn := 63\none := 1\ntwo := 2\nans := 0\nto_add := 1\n", shape="rectangle", style="rounded"];
+		loop_subroutine_3 [label="cond := i <= n\nif cond", shape="rectangle", style="rounded"];
+		loop_subroutine_4 [label="mod2a := mod2(a)\nmod2b := mod2(b)\ncond_add := mod2a && mod2b\nif c", shape="rectangle", style="rounded"];
+		loop_subroutine_5 [label="cond_add := mod2a || mod2b\n", shape="rectangle", style="rounded"];
+		loop_subroutine_6 [label="if cond_add", shape="rectangle", style="rounded"];
+		loop_subroutine_7 [label="ans := ans + to_add\n", shape="rectangle", style="rounded"];
+		loop_subroutine_8 [label="a := a / two\nb := b / two\nto_add := to_add * two\ni := i + one\n", shape="rectangle", style="rounded"];
+		loop_subroutine_9 [label="return ans", shape="rectangle", style="rounded"];
 
 		loop_subroutine_0 -> loop_subroutine_2;
 		loop_subroutine_2 -> loop_subroutine_3;
-		loop_subroutine_3 -> loop_subroutine_4;
-		loop_subroutine_4 -> loop_subroutine_5;
+		loop_subroutine_3 -> loop_subroutine_4 [label="T"];
+		loop_subroutine_3 -> loop_subroutine_9 [label="F"];
+		loop_subroutine_4 -> loop_subroutine_5 [label="T"];
+		loop_subroutine_4 -> loop_subroutine_6 [label="F"];
 		loop_subroutine_5 -> loop_subroutine_6;
-		loop_subroutine_6 -> loop_subroutine_7;
+		loop_subroutine_6 -> loop_subroutine_7 [label="T"];
+		loop_subroutine_6 -> loop_subroutine_8 [label="F"];
 		loop_subroutine_7 -> loop_subroutine_8;
-		loop_subroutine_8 -> loop_subroutine_9;
-		loop_subroutine_9 -> loop_subroutine_10 [label="T"];
-		loop_subroutine_9 -> loop_subroutine_22 [label="F"];
-		loop_subroutine_10 -> loop_subroutine_11;
-		loop_subroutine_11 -> loop_subroutine_12;
-		loop_subroutine_12 -> loop_subroutine_13;
-		loop_subroutine_13 -> loop_subroutine_14 [label="T"];
-		loop_subroutine_13 -> loop_subroutine_15 [label="F"];
-		loop_subroutine_14 -> loop_subroutine_15;
-		loop_subroutine_15 -> loop_subroutine_16 [label="T"];
-		loop_subroutine_15 -> loop_subroutine_17 [label="F"];
-		loop_subroutine_16 -> loop_subroutine_17;
-		loop_subroutine_17 -> loop_subroutine_18;
-		loop_subroutine_18 -> loop_subroutine_19;
-		loop_subroutine_19 -> loop_subroutine_20;
-		loop_subroutine_20 -> loop_subroutine_8;
+		loop_subroutine_8 -> loop_subroutine_3;
 	}
 	subgraph cluster_OR {
-		label="OR";
+		label="OR(a: int, b: int)";
 		rankdir="TB";
-		OR_0 [label="START", shape="ellipse"];
-		OR_2 [label="oper := true", shape="ellipse"];
-		OR_3 [label="v1 := loop_subroutine(a, b, oper)", shape="ellipse"];
-		OR_4 [label="return v1", shape="ellipse"];
+		OR_0 [label="START", shape="rectangle", style="rounded"];
+		OR_2 [label="oper := true\nv1 := loop_subroutine(a, b, oper)\nreturn v1", shape="rectangle", style="rounded"];
 
 		OR_0 -> OR_2;
-		OR_2 -> OR_3;
-		OR_3 -> OR_4;
 	}
 	subgraph cluster_AND {
-		label="AND";
+		label="AND(a: int, b: int)";
 		rankdir="TB";
-		AND_0 [label="START", shape="ellipse"];
-		AND_2 [label="oper := false", shape="ellipse"];
-		AND_3 [label="v1 := loop_subroutine(a, b, oper)", shape="ellipse"];
-		AND_4 [label="return v1", shape="ellipse"];
+		AND_0 [label="START", shape="rectangle", style="rounded"];
+		AND_2 [label="oper := false\nv1 := loop_subroutine(a, b, oper)\nreturn v1", shape="rectangle", style="rounded"];
 
 		AND_0 -> AND_2;
-		AND_2 -> AND_3;
-		AND_3 -> AND_4;
 	}
 	subgraph cluster_XOR {
-		label="XOR";
+		label="XOR(a: int, b: int)";
 		rankdir="TB";
-		XOR_0 [label="START", shape="ellipse"];
-		XOR_2 [label="and_val := AND(a, b)", shape="ellipse"];
-		XOR_3 [label="or_val := OR(a, b)", shape="ellipse"];
-		XOR_4 [label="ans := or_val - and_val", shape="ellipse"];
-		XOR_5 [label="return ans", shape="ellipse"];
+		XOR_0 [label="START", shape="rectangle", style="rounded"];
+		XOR_2 [label="and_val := AND(a, b)\nor_val := OR(a, b)\nans := or_val - and_val\nreturn ans", shape="rectangle", style="rounded"];
 
 		XOR_0 -> XOR_2;
-		XOR_2 -> XOR_3;
-		XOR_3 -> XOR_4;
-		XOR_4 -> XOR_5;
 	}
 	subgraph cluster_main {
-		label="main";
+		label="main(a: int, b: int, c: int)";
 		rankdir="TB";
-		main_0 [label="START", shape="ellipse"];
-		main_2 [label="one := 1", shape="ellipse"];
-		main_3 [label="zero := 0", shape="ellipse"];
-		main_4 [label="sel := c - one", shape="ellipse"];
-		main_5 [label="ans := zero", shape="ellipse"];
-		main_6 [label="less := sel < zero", shape="ellipse"];
-		main_7 [label="equal := sel == zero", shape="ellipse"];
-		main_8 [label="greater := sel > zero", shape="ellipse"];
-		main_9 [label="if less", shape="ellipse"];
-		main_10 [label="if equal", shape="ellipse"];
-		main_11 [label="ans := AND(a, b)", shape="ellipse"];
-		main_13 [label="ans := OR(a, b)", shape="ellipse"];
-		main_15 [label="ans := XOR(a, b)", shape="ellipse"];
-		main_16 [label="print ans", shape="ellipse"];
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="one := 1\nzero := 0\nsel := c - one\nans := zero\nless := sel < zero\nequal := sel == zero\ngreater := sel > zero\nif less", shape="rectangle", style="rounded"];
+		main_3 [label="if equal", shape="rectangle", style="rounded"];
+		main_4 [label="ans := AND(a, b)\n", shape="rectangle", style="rounded"];
+		main_5 [label="ans := OR(a, b)\n", shape="rectangle", style="rounded"];
+		main_6 [label="ans := XOR(a, b)\n", shape="rectangle", style="rounded"];
+		main_7 [label="print ans\n", shape="rectangle", style="rounded"];
 
 		main_0 -> main_2;
-		main_2 -> main_3;
-		main_3 -> main_4;
-		main_4 -> main_5;
-		main_5 -> main_6;
+		main_2 -> main_4 [label="T"];
+		main_2 -> main_3 [label="F"];
+		main_3 -> main_5 [label="T"];
+		main_3 -> main_6 [label="F"];
+		main_4 -> main_7;
+		main_5 -> main_7;
 		main_6 -> main_7;
-		main_7 -> main_8;
-		main_8 -> main_9;
-		main_9 -> main_11 [label="T"];
-		main_9 -> main_10 [label="F"];
-		main_10 -> main_13 [label="T"];
-		main_10 -> main_15 [label="F"];
-		main_11 -> main_16;
-		main_13 -> main_16;
-		main_15 -> main_16;
 	}
 }
