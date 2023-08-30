@@ -1,0 +1,18 @@
+@foo(a: int, b: int, c: int) : int {
+    x: int = add a b;
+    y: int = mul x c;
+    ret y;
+}
+
+@bar(g: int, f: int) {
+    print g;
+    print f;
+}
+
+@main {
+    a: int = const 10;
+    b: int = const 20;
+    c: int = const 5;
+    d: int = call @foo a b c;
+    call @bar d d;
+}

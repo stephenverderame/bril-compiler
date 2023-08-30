@@ -1,0 +1,7 @@
+[envs.baseline]
+command = "cat {filename} | bril2json | brili"
+return_code = 0
+
+[envs.dummy]
+command = "cat {filename} | bril2json | cargo run --bin dummy-pass | brili"
+return_code = 0

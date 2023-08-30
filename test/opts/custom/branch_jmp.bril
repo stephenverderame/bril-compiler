@@ -1,0 +1,14 @@
+@main {
+    foo: int = const 10;
+    bar: int = const 20;
+    b: bool = eq foo bar;
+    br b .yes .no;
+.yes:
+    jmp .yes.0;
+.no:
+    jmp .yes;
+.yes.0:
+    jmp .yes.1;
+.yes.1:
+    print b;
+}

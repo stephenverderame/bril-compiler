@@ -1,0 +1,15 @@
+@main {
+    x: int = const 42;
+    y: int = const 30;
+    y2: int = const 5;
+    z: int = sub y y2;
+    b: bool = lt x z;
+    br b .yes .no;
+.yes:
+    print x;
+    jmp .end;
+.no:
+    print y;
+    jmp .end;
+.end:
+}
