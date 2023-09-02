@@ -1,0 +1,14 @@
+@main {
+    a: int = const 10;
+    b: int = const 20;
+    a: int = const 5;
+    c: bool = lt a b;
+    br c .yes .no;
+.yes:
+    d: bool = id c;
+    jmp .end;
+.no:
+    d: bool = id b;
+.end:
+    print a;
+}

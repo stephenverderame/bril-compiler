@@ -5,3 +5,7 @@ return_code = 0
 [envs.dummy]
 command = "cat {filename} | bril2json | cargo run --bin dummy-pass | brili {args}"
 return_code = 0
+
+[envs.local-dce]
+command = "cat {filename} | bril2json | cargo run --bin local-dce | brili {args}"
+return_code = 0

@@ -2,7 +2,6 @@ use atty::Stream;
 use bril_rs::{load_program, load_program_from_read, Program};
 use cfg::Cfg;
 use clap::Parser;
-use serde_json;
 use std::fs::File;
 
 #[derive(Parser, Debug)]

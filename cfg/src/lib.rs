@@ -16,8 +16,8 @@ pub const CFG_END_ID: usize = CFG_START_ID + 1;
 /// A basic block in the CFG
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct BasicBlock {
-    instrs: Vec<Instruction>,
-    terminator: Option<Instruction>,
+    pub instrs: Vec<Instruction>,
+    pub terminator: Option<Instruction>,
 }
 
 impl BasicBlock {
