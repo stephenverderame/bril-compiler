@@ -66,10 +66,7 @@
  ret ans;
 }
 
-@main(){
-  a: int = const 7;
-  b: int = const 15;
-  c: int = const 0;
+@main(a: int, b: int, c: int){
   one: int = const 1;
   zero: int = const 0; 
 

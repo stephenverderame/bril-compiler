@@ -1,8 +1,5 @@
 # ARGS: -5 8 21
-@main() {
-  a: int = const -5;
-  b: int = const 8;
-  c: int = const 21;
+@main(a: int, b: int, c: int) {
   call @quadratic a b c;
 }
 

@@ -1,8 +1,6 @@
 # ARGS: 1 1000
 # Prints the primes in the interval [a, b]
-@main() {
-  a: int = const 1;
-  b: int = const 1000;
+@main(a : int, b : int) {
   .for.outer.init: # start at interval unless a < 2, then start at 2.
     t0 : int = const 2;
     t1 : bool = lt a t0;

@@ -24,10 +24,8 @@
   ret t2;
 }
 
-@main() {
-  a: int = const 3;
-  b: int = const 6;
-  tmp: int = call @ack a b;
+@main(m: int, n: int) {
+  tmp: int = call @ack m n;
   print tmp;
 }
 

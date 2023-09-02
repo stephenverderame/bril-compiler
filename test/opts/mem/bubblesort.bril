@@ -61,14 +61,8 @@
 }
 
 # ARGS: 5 3 10 1 9 7
-@main() {
+@main(size: int, n1: int, n2: int, n3: int, n4: int, n5: int) {
 # Pack the input elements into an array with a starting pointer
-    size: int = const 5;
-    n1: int = const 3;
-    n2: int = const 10;
-    n3: int = const 1;
-    n4: int = const 9;
-    n5: int = const 7;
     array: ptr<int> = call @pack size n1 n2 n3 n4 n5;
 
 # Bubble Sort

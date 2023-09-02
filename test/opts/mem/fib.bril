@@ -1,6 +1,5 @@
 # ARGS: 10
-@main() {
-  input: int = const 10;
+@main(input: int) {
   zero: int = const 0;
   one: int = const 1;
   neg_one: int = const -1;

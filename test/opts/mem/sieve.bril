@@ -103,7 +103,6 @@
 }
 
 # ARGS: 100
-@main() {
-  input: int = const 100;
+@main(input: int) {
   call @printPrimesUpTo input;
 }

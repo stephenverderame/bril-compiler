@@ -1,6 +1,5 @@
 # ARGS: 496
-@main() {
-  input: int = const 496;
+@main(input: int) {
   n: int = id input;
   v0: int = const 0;
   v1: int = const 1;

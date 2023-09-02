@@ -5,8 +5,7 @@
 # This is equivalent to the input mod 9 except if that value would be zero
 # in which case the digital root is nine.
 
-@main() {
-   input: int = const 645634654;
+@main(input: int) {
     zero: int = const 0;
     ten: int = const 10;
     result: int = const 0;

@@ -6,8 +6,7 @@
 # printed; otherwise, nothing is printed. If there are
 # multiple triples for the given n then all are printed.
 
-@main() {
-  n: int = const 125;
+@main(n: int) {
   one: int = const 1;
 
   n_sq: int = mul n n;

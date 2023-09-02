@@ -55,8 +55,7 @@
   ret v15;
 }
 # ARGS: 100
-@main() {
-  n: int = const 100;
+@main(n: int) {
   v0: int = id n;
   sum: int = call @sumOfSquares v0;
   sum: int = id sum;

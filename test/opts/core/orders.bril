@@ -85,9 +85,7 @@
 
 # ARGS: 96 false
 # u = 0 is special case which we take care of in main
-@main() {
-  n: int = const 96;
-  use_lcm: bool = const false;
+@main(n: int, use_lcm: bool) {
   zero: int = const 0;
   u: int = const 1;
   n: int = call @abs n;

@@ -3,8 +3,7 @@
 # Finds the sum of an integer input's positive divisors.
 # Prints the divisors as they are found, followed by the sum.
 
-@main() {
-  n: int = const 100;
+@main(n: int) {
   i   : int = const 0;
   res : int = const 0;
   one : int = const 1;

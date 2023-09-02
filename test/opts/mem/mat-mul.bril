@@ -107,9 +107,7 @@
 }
 
 # ARGS: 50 109658
-@main() {
-  size: int = const 50;
-  seed: int = const 109658;
+@main(size: int, seed: int) {
   one: int = const 1;
   rng: ptr<int> = alloc one;
   store rng seed;

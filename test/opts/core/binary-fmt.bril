@@ -1,6 +1,5 @@
 # ARGS: 128
-@main() {
-	n : int = const 128;
+@main(n: int) {
 	call @printBinary n;
 }
 

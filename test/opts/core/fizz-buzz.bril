@@ -1,6 +1,5 @@
 # ARGS: 101
-@main() {
-  input: int = const 101;
+@main(input: int) {
   v1: int = const 1;
   index: int = id v1;
 .for.cond.0:

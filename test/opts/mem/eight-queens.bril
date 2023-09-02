@@ -1,6 +1,5 @@
 # ARGS: 8
-@main() {
-  input: int = const 8;
+@main(input: int) {
   n: int = id input;
   zero: int = const 0;
   icount: int = id zero;

@@ -1,8 +1,7 @@
 # Recursive factorial
 
 # ARGS: 20
-@main() {
-  a: int = const 20;
+@main(a: int) {
   x: int = call @fact a;
   print x;
   v13: int = const 0;

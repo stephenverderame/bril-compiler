@@ -1,6 +1,5 @@
 # ARGS: 407
-@main() {
-  input : int = const 407;
+@main(input : int) {
   zero : int = const 0;
   ten : int = const 10;
   sum : int = const 0;
