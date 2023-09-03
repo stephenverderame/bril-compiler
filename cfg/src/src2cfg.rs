@@ -57,7 +57,7 @@ impl Cfg {
                     active_labels.push(label.clone());
                 }
                 Code::Instruction(instr) => {
-                    if is_terminator(instr, single_mode) {
+                    if is_terminator(instr) {
                         id = Self::add_block(
                             active_block,
                             Some(instr.clone()),
@@ -70,6 +70,20 @@ impl Cfg {
                         active_labels = Vec::new();
                     } else {
                         active_block.instrs.push(instr.clone());
+                        if single_mode {
+                            // instruction-level CFG, so make every instruction
+                            // its own block
+                            id = Self::add_block(
+                                active_block,
+                                None,
+                                active_labels,
+                                id,
+                                blocks,
+                                labels,
+                            );
+                            active_block = BasicBlock::default();
+                            active_labels = Vec::new();
+                        }
                     }
                 }
             }

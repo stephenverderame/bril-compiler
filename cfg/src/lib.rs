@@ -72,15 +72,14 @@ pub struct Cfg {
 /// # Arguments
 /// * `instr` - The instruction
 /// * `single_mode` - If true, then a basic block is a single instruction
-const fn is_terminator(instr: &Instruction, single_mode: bool) -> bool {
-    single_mode
-        || matches!(
-            instr,
-            Instruction::Effect {
-                op: EffectOps::Jump | EffectOps::Branch | EffectOps::Return,
-                ..
-            }
-        )
+const fn is_terminator(instr: &Instruction) -> bool {
+    matches!(
+        instr,
+        Instruction::Effect {
+            op: EffectOps::Jump | EffectOps::Branch | EffectOps::Return,
+            ..
+        }
+    )
 }
 
 impl CfgNode {

@@ -1,11 +1,14 @@
 [envs.baseline]
-command = "cat {filename} | bril2json | brili {args}"
+command = "bril2json < {filename} | brili {args}"
 return_code = 0
 
 [envs.dummy]
-command = "cat {filename} | bril2json | cargo run --bin dummy-pass | brili {args}"
+command = "bril2json < {filename} | cargo run --bin dummy-pass | brili {args}"
 return_code = 0
 
+[envs.dummy-single]
+command = "bril2json < {filename} | cargo run --bin dummy-pass -- --use-blocks false | brili {args}"
+
 [envs.local-dce]
-command = "cat {filename} | bril2json | cargo run --bin local-dce | brili {args}"
+command = "bril2json < {filename} | cargo run --bin local-dce | brili {args}"
 return_code = 0
