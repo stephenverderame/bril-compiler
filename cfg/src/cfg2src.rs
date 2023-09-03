@@ -48,13 +48,12 @@ fn need_label(
 /// Fixes jumps on blocks that branch and
 /// sets the next block to be visited by pushing
 /// it to the stack.
-fn fix_branch_jumps_and_set_next(
+fn fix_branch_jumps(
     true_node: usize,
     false_node: usize,
     block: &BasicBlock,
     mut src: Vec<Code>,
-    mut stack: VecDeque<usize>,
-) -> (Vec<Code>, VecDeque<usize>) {
+) -> Vec<Code> {
     if let Instruction::Effect {
         args: terminator_args,
         funcs: terminator_funcs,
@@ -75,9 +74,7 @@ fn fix_branch_jumps_and_set_next(
     } else {
         panic!("Unexpected terminator of branching block");
     }
-    stack.push_front(true_node);
-    stack.push_back(false_node);
-    (src, stack)
+    src
 }
 
 /// Fixes jumps on blocks that transition to the end block.
@@ -100,8 +97,10 @@ fn fix_goto_epilogue(
                 ..
             },
         ) => src.push(Code::Instruction(instr.clone())),
+        _ if last_block => {}
         Some(Instruction::Effect {
             op: EffectOps::Jump,
+            pos,
             ..
         }) => {
             // jump to end
@@ -110,10 +109,9 @@ fn fix_goto_epilogue(
                 args: vec![],
                 funcs: vec![],
                 labels: vec![format!("{BLOCK_LABEL_BASE}{CFG_END_ID}")],
-                pos: None,
+                pos: pos.clone(),
             }));
         }
-        None if last_block => {}
         None => src.push(Code::Instruction(Instruction::Effect {
             op: EffectOps::Jump,
             args: vec![],
@@ -135,48 +133,54 @@ fn fix_goto_epilogue(
 /// * `block` - The block to add to the source code
 /// * `src` - The source code
 /// * `visited` - The visited blocks
-/// * `stack` - The stack of blocks to visit
-/// * `last_block` - True if the block is the last block
+/// * `next_code_block` - The next basic block that will come after this one
+///     in the source code
 /// # Returns
 /// A tuple of the source code with `block` instructions added and
 /// the stack of blocks to visit next
-fn fix_jumps_and_set_next(
+fn fix_jumps(
     cfg: &Cfg,
     block_id: usize,
     block: &BasicBlock,
     mut src: Vec<Code>,
     visited: &HashSet<usize>,
-    mut stack: VecDeque<usize>,
-    last_block: bool,
-) -> (Vec<Code>, VecDeque<usize>) {
+    next_code_block: Option<&usize>,
+) -> Vec<Code> {
+    let terminator_pos =
+        block.terminator.as_ref().and_then(|p| p.get_pos().or(None));
     match cfg.adj_lst.get(&block_id).unwrap() {
         CfgEdgeTo::Branch {
             true_node,
             false_node,
         } => {
-            (src, stack) = fix_branch_jumps_and_set_next(
-                *true_node,
-                *false_node,
-                block,
-                src,
-                stack,
-            );
+            src = fix_branch_jumps(*true_node, *false_node, block, src);
         }
         CfgEdgeTo::Next(next_node) if *next_node == CFG_END_ID => {
-            src = fix_goto_epilogue(block, src, last_block);
+            let is_last_block = next_code_block.is_none()
+                || matches!(next_code_block, Some(&CFG_END_ID));
+            src = fix_goto_epilogue(block, src, is_last_block);
         }
         CfgEdgeTo::Next(next_node) if visited.contains(next_node) => {
             src.push(Code::Instruction(Instruction::Effect {
                 op: EffectOps::Jump,
                 args: vec![],
                 funcs: vec![],
-                labels: vec![format!("{BLOCK_LABEL_BASE}{}", next_node)],
-                pos: None,
+                labels: vec![format!("{BLOCK_LABEL_BASE}{next_node}")],
+                pos: terminator_pos,
             }));
         }
         CfgEdgeTo::Next(next_node) => {
-            // fallthrough
-            stack.push_front(*next_node);
+            if next_code_block == Some(next_node) {
+                // fallthrough to next block
+            } else {
+                src.push(Code::Instruction(Instruction::Effect {
+                    op: EffectOps::Jump,
+                    args: vec![],
+                    funcs: vec![],
+                    labels: vec![format!("{BLOCK_LABEL_BASE}{next_node}")],
+                    pos: terminator_pos,
+                }));
+            }
         }
         CfgEdgeTo::Terminal => {
             if let Some(t) = block.terminator.as_ref() {
@@ -184,7 +188,7 @@ fn fix_jumps_and_set_next(
             }
         }
     }
-    (src, stack)
+    src
 }
 
 /// Converts a CFG to a vector of Bril instructions and labels.
@@ -196,21 +200,13 @@ pub fn to_src(cfg: &Cfg) -> Vec<Code> {
     let mut src = Vec::new();
     let mut visited = HashSet::new();
     visited.insert(CFG_START_ID);
-    visited.insert(CFG_END_ID);
-    let mut stack = VecDeque::new();
+    let mut order = order_blocks(cfg, &cfg_preds(cfg));
     let preds = cfg_preds(cfg);
-    if let Some(CfgEdgeTo::Next(nxt)) = cfg.adj_lst.get(&CFG_START_ID) {
-        stack.push_front(*nxt);
-    } else {
-        panic!("Unexpected transition from start node");
-    }
     let mut last_block_id = CFG_START_ID;
-    while let Some(id) = stack.pop_front() {
-        if visited.contains(&id) {
-            continue;
-        }
+    while let Some(id) = order.pop_front() {
+        assert!(!visited.contains(&id));
         visited.insert(id);
-        let last_node = visited.len() == cfg.blocks.len();
+        let next_code_block = order.front();
         if let Some(CfgNode::Block(block)) = cfg.blocks.get(&id) {
             if need_label(cfg, last_block_id, &preds, id) {
                 // we relabel everything to avoid potential conflicts
@@ -222,9 +218,7 @@ pub fn to_src(cfg: &Cfg) -> Vec<Code> {
             for instr in &block.instrs {
                 src.push(Code::Instruction(instr.clone()));
             }
-            (src, stack) = fix_jumps_and_set_next(
-                cfg, id, block, src, &visited, stack, last_node,
-            );
+            src = fix_jumps(cfg, id, block, src, &visited, next_code_block);
             last_block_id = id;
         }
     }
@@ -235,6 +229,61 @@ pub fn to_src(cfg: &Cfg) -> Vec<Code> {
         });
     }
     src
+}
+
+/// Returns false if the node has unmarked predecessors.
+fn all_marked_preds(
+    node: usize,
+    preds: &HashMap<usize, Vec<usize>>,
+    unmarked: &HashSet<usize>,
+) -> bool {
+    preds
+        .get(&node)
+        .map_or(true, |v| v.iter().all(|e| !unmarked.contains(e)))
+}
+
+/// Returns an order of blocks to output via Greedy Reordering
+/// The order starts with the first real (non-start) node and ends with the end node
+fn order_blocks(
+    cfg: &Cfg,
+    preds: &HashMap<usize, Vec<usize>>,
+) -> VecDeque<usize> {
+    let mut order = VecDeque::new();
+    let mut unmarked = cfg.blocks.keys().copied().collect::<HashSet<_>>();
+    unmarked.remove(&CFG_START_ID);
+    unmarked.remove(&CFG_END_ID);
+    let mut n = CFG_START_ID;
+    while !unmarked.is_empty() {
+        unmarked.remove(&n);
+        order.push_back(n);
+        match cfg.adj_lst.get(&n) {
+            // maximal unmarked trace
+            Some(CfgEdgeTo::Next(next_node))
+                if unmarked.contains(next_node) && *next_node != CFG_END_ID =>
+            {
+                n = *next_node;
+            }
+            _ => {
+                // heuristic: pick the first unmarked node with no unmarked predecessors
+                let old_n = n;
+                for u in &unmarked {
+                    // first iteration: always set the next node in case
+                    // there are no nodes with no unmarked predecessors
+                    if n == old_n {
+                        n = *u;
+                    }
+                    if all_marked_preds(*u, preds, &unmarked) {
+                        n = *u;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    // remove START_ID
+    assert!(order.pop_front() == Some(CFG_START_ID));
+    order.push_back(CFG_END_ID);
+    order
 }
 
 impl Cfg {

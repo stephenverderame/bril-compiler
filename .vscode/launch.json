@@ -8,10 +8,10 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/target/debug/bril2cfg",
+            "program": "${workspaceFolder}/target/debug/dummy-pass",
             "args": [
                 "-f",
-                "${workspaceFolder}/test/bril2cfg/debug.json"
+                "${workspaceFolder}/test/opts/custom/debug.json"
             ],
             "cwd": "${workspaceFolder}"
         }
