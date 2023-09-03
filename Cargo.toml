@@ -1,3 +1,10 @@
 [workspace]
 
-members = ["bril-rs", "cfg", "bril2cfg", "dummy-pass", "local-dce"]
+members = [
+    "bril-rs",
+    "cfg",
+    "bril2cfg",
+    "dummy-pass",
+    "local-dce",
+    "common-cli",
+]

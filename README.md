@@ -18,3 +18,5 @@ Most tests come from [https://github.com/sampsyo/bril](https://github.com/sampsy
 Removes unnecessary jumps in the conversion process.
 * `local-dce` - Dead code elimination as a local optimization performed on basic
 blocks.
+* `common-cli` - Procedural macros for the basic CLI options and interactions for
+compiler passes

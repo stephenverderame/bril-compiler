@@ -1,48 +1,14 @@
-use atty::Stream;
-use bril_rs::{
-    load_program, load_program_from_read, EffectOps, Instruction, Program,
-};
-use cfg::{BasicBlock, Cfg, CfgNode};
-use clap::{command, Parser};
-use std::{collections::HashMap, fs::File};
+use bril_rs::{EffectOps, Instruction};
+use cfg::{BasicBlock, CfgNode};
+use common_cli::{cli_args, compiler_pass};
+use std::collections::HashMap;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct CLIArgs {
-    /// The optional file to read from, if not specified a bril program
-    /// is expected on stdin
-    #[arg(short, long)]
-    file: Option<String>,
-}
-
-fn main() {
-    let args = CLIArgs::parse();
-    if args.file.is_some() {
-        let prog =
-            load_program_from_read(File::open(args.file.unwrap()).unwrap());
-        println!("{}", serde_json::to_string(&transform_prog(prog)).unwrap());
-    } else if !atty::is(Stream::Stdin) {
-        println!(
-            "{}",
-            serde_json::to_string(&transform_prog(load_program())).unwrap()
-        );
-    } else {
-        eprintln!("Either specify a file or pipe in a bril program.");
-        eprintln!("See `local-dce --help` for more information.");
-    }
-}
-
-fn transform_prog(mut prog: Program) -> Program {
-    for f in &mut prog.functions {
-        let cfg = Cfg::from(f, false);
-        let new_body = ldce(cfg).to_src();
-        f.instrs = new_body;
-    }
-    prog
-}
+#[cli_args]
+struct ExtraArgs {}
 
 /// Invokes local dead code elimination on the cfg
-fn ldce(mut cfg: Cfg) -> Cfg {
+#[compiler_pass(true)]
+fn ldce(mut cfg: Cfg, _args: &CLIArgs) -> Cfg {
     for block in &mut cfg.blocks.iter_mut().filter_map(|(_, node)| match node {
         CfgNode::Block(block) => Some(block),
         _ => None,

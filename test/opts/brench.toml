@@ -4,5 +4,8 @@ benchmarks = '**/*.bril'
 [runs.baseline]
 pipeline = ["bril2json", "brili -p {args}"]
 
+[runs.reorder]
+pipeline = ["bril2json", "cargo run --bin dummy-pass", "brili -p {args}"]
+
 [runs.local-dce]
 pipeline = ["bril2json", "cargo run --bin local-dce", "brili -p {args}"]

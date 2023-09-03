@@ -9,6 +9,7 @@ edition = "2021"
 cfg = { path = "../cfg" }
 atty = "0.2"
 serde_json = "1.0"
+common-cli = { path = "../common-cli" }
 
 [dependencies.clap]
 version = "4.4.1"

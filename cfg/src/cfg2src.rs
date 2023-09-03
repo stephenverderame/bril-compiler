@@ -256,6 +256,7 @@ fn order_blocks(
     while !unmarked.is_empty() {
         unmarked.remove(&n);
         order.push_back(n);
+        // set default next node
         match cfg.adj_lst.get(&n) {
             // maximal unmarked trace
             Some(CfgEdgeTo::Next(next_node))
@@ -264,18 +265,21 @@ fn order_blocks(
                 n = *next_node;
             }
             _ => {
-                // heuristic: pick the first unmarked node with no unmarked predecessors
-                let old_n = n;
-                for u in &unmarked {
-                    // first iteration: always set the next node in case
-                    // there are no nodes with no unmarked predecessors
-                    if n == old_n {
-                        n = *u;
-                    }
-                    if all_marked_preds(*u, preds, &unmarked) {
-                        n = *u;
-                        break;
-                    }
+                n = *unmarked.iter().next().unwrap_or(&n);
+            }
+        }
+
+        if !all_marked_preds(n, preds, &unmarked) {
+            // heuristic: pick the first unmarked node with no unmarked predecessors
+            // if there are no such nodes, prefer the next node in the current trace
+            // or pick the first node in the unmarked set if the current trace is ending
+            // if there are multiple such nodes, pick the next one in the current trace
+            for u in &unmarked {
+                // first iteration: always set the next node in case
+                // there are no nodes with no unmarked predecessors
+                if all_marked_preds(*u, preds, &unmarked) {
+                    n = *u;
+                    break;
                 }
             }
         }
