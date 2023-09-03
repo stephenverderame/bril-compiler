@@ -16,3 +16,5 @@ is taken from Patrick LaFontaine from [https://github.com/sampsyo/bril](https://
 Most tests come from [https://github.com/sampsyo/bril](https://github.com/sampsyo/bril) benchmarks.
 * `dummy-pass` - Simply converts a bril program into a CFG and back into a bril program.
 Removes unnecessary jumps in the conversion process.
+* `local-dce` - Dead code elimination as a local optimization performed on basic
+blocks.
