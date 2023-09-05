@@ -1,0 +1,10 @@
+@main {
+    foo: int = const 10;
+    bar: int = const 2;
+    b: bool = eq bar bar;
+    br b .yes .no;
+.yes:
+    print bar;
+.no:
+    print b;
+}

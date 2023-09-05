@@ -1,14 +1,14 @@
-use bril_rs::{EffectOps, Instruction};
+use bril_rs::{Code, EffectOps, Instruction};
 use cfg::{BasicBlock, CfgNode};
 use common_cli::{cli_args, compiler_pass};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[cli_args]
 struct ExtraArgs {}
 
 /// Invokes local dead code elimination on the cfg
 #[compiler_pass(true)]
-fn ldce(mut cfg: Cfg, _args: &CLIArgs) -> Cfg {
+fn dce(mut cfg: Cfg, _args: &CLIArgs) -> Cfg {
     for block in &mut cfg.blocks.iter_mut().filter_map(|(_, node)| match node {
         CfgNode::Block(block) => Some(block),
         _ => None,
@@ -76,4 +76,37 @@ fn block_dce(block: &mut BasicBlock) {
             break;
         }
     }
+}
+
+/// Performs trvial global dead code elimination
+fn dce_post(mut instrs: Vec<Code>) -> Vec<Code> {
+    let mut can_remove = HashSet::new();
+    let mut used_args = HashSet::new();
+    // identify all args
+    for i in &instrs {
+        if let Code::Instruction(instr) = i {
+            if let Some(args) = instr_args(instr) {
+                used_args.extend(args.iter().cloned());
+            }
+        }
+    }
+    // identify destinations that aren't used (non-effects)
+    for i in &instrs {
+        if let Code::Instruction(
+            instr @ (Instruction::Constant { .. } | Instruction::Value { .. }),
+        ) = i
+        {
+            if let Some(dest) = instr_dest(instr) {
+                if !used_args.contains(dest) {
+                    can_remove.insert(instr as *const _);
+                }
+            }
+        }
+    }
+    // remove instructions that compute results that aren't used
+    instrs.retain(|k| match k {
+        Code::Instruction(k) => !can_remove.contains(&(k as *const _)),
+        _ => true,
+    });
+    instrs
 }

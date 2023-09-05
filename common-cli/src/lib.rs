@@ -51,6 +51,10 @@ pub fn cli_args(_: TokenStream, item: TokenStream) -> TokenStream {
 
 /// A compiler pass that decorates a function that takes in a `Cfg` and `&CLIArgs`
 /// and returns a `Cfg`
+///
+/// A function with the same name as the decorated function with `_post` appended
+/// is expected to exist and will be called after the decorated function. It
+/// is expected to take in a `Vec<Code>` and return a `Vec<Code>`
 /// # Arguments
 /// * `default_use_cfg` - Whether to use basic blocks for the analysis or not
 ///     if not specified in the CLI args
@@ -59,6 +63,8 @@ pub fn cli_args(_: TokenStream, item: TokenStream) -> TokenStream {
 pub fn compiler_pass(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
     let name = input.sig.ident.to_string();
+    let postprocess_name =
+        Ident::new(&format!("{}_post", name), Span::call_site());
     let name = Ident::new(&name, Span::call_site());
     let default_use_cfg = parse_macro_input!(attr as syn::LitBool).value;
     let output = quote! {
@@ -90,7 +96,7 @@ pub fn compiler_pass(attr: TokenStream, item: TokenStream) -> TokenStream {
             for f in &mut prog.functions {
                 let cfg = Cfg::from(f, !args.use_blocks.unwrap_or(#default_use_cfg));
                 let new_body = #name(cfg, args).to_src();
-                f.instrs = new_body;
+                f.instrs = #postprocess_name(new_body);
             }
             prog
         }
