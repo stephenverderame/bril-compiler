@@ -347,12 +347,20 @@ fn rewrite_instr(instr: &mut Instruction, state: &LvnState) {
     }
 }
 
+/// Gets the value number of `value`
+/// If `value` is an id, returns the value number of the id
+fn get_val_num(value: &Value, vns: &Vns) -> Option<ValNum> {
+    match value {
+        Value::Id(v) => Some(*v),
+        v => vns.get(v).copied(),
+    }
+}
+
 /// Performs local value numbering on a basic block
 /// # Arguments
 /// * `block` - The basic block to perform local value numbering on
 /// * `state` - The current state of the local value numbering structures
 fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
-    use std::collections::hash_map::Entry;
     // unique id for values we cannot reason about such as calls
     let mut uid = 0u64;
     let mut new_instrs = vec![];
@@ -364,9 +372,9 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
         if let Some(val) = val {
             *instr = val_to_instr(&val, &state.locs, instr);
             (state, new_instrs) = handle_overwrite(instr, state, new_instrs);
-            let val_num = match state.vns.entry(val) {
-                Entry::Vacant(e) => {
-                    e.insert(state.cur_val);
+            let val_num = match get_val_num(&val, &state.vns) {
+                None => {
+                    state.vns.insert(val, state.cur_val);
                     state.locs.insert(
                         state.cur_val,
                         instr.get_dest().unwrap().clone(),
@@ -375,8 +383,7 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
                     state.cur_val = state.cur_val.next();
                     r
                 }
-                Entry::Occupied(num_entry) => {
-                    let num = *num_entry.get();
+                Some(num) => {
                     *instr = make_id_instr(&state.locs[&num], instr);
                     num
                 }
