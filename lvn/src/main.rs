@@ -9,6 +9,7 @@ use common_cli::{cli_args, compiler_pass};
 #[cli_args]
 struct ExtraArgs {}
 
+/// A value number
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Copy)]
 struct ValNum(usize);
 
@@ -36,8 +37,14 @@ enum Value {
     Not(ValNum),
     Bool(bool),
     Int(i64),
+    /// An integral value used for a float. We want to separate these from
+    /// regular integers to avoid type mismatches
+    ///
+    /// Ex. `x: float = const 0;`
+    IntAsFloat(i64),
     PtrAdd(ValNum, ValNum),
-    /// A unique value for values we cannot reason about such as calls
+    /// A unique value for values we cannot reason about such return values
+    /// from calls
     Unique(u64),
 }
 
@@ -59,7 +66,9 @@ struct LvnState {
     vns: Vns,
     /// Maps value numbers to their constant values if they are constants
     consts: Consts,
+    /// The next available value number
     cur_val: ValNum,
+    /// The next available temp variable id
     lvn_temp_num: u64,
 }
 
@@ -124,6 +133,7 @@ fn sort_val_nums(v1: ValNum, v2: ValNum) -> (ValNum, ValNum) {
 
 /// Simplifies a value expression if possible using constant folding and
 /// algebraic identities
+/// We only simplify integral expressions (ints, bools, and pointers)
 #[allow(clippy::too_many_lines)]
 fn simplify(v: Value, consts: &Consts) -> Value {
     match v {
@@ -247,7 +257,10 @@ fn simplify(v: Value, consts: &Consts) -> Value {
                 Value::Ge(a, b)
             }
         }
-        Value::Bool(_) | Value::Int(_) | Value::Unique(_) => v,
+        Value::Bool(_)
+        | Value::Int(_)
+        | Value::Unique(_)
+        | Value::IntAsFloat(_) => v,
         Value::Id(v) => {
             consts
                 .get(&v)
@@ -266,13 +279,15 @@ fn simplify(v: Value, consts: &Consts) -> Value {
 }
 
 /// Makes a value expression for `instr` if possible
+///
+/// Constructing a value expression fails for effects
+/// # Arguments
+/// * `instr` - The instruction to make a value expression for
+/// * `env` - The current environment mapping variable names to value numbers
+/// * `uid` - The next available unique id for values we cannot reason about such
+///     returns from calls
 fn make_val(instr: &Instruction, env: &Env, uid: &mut u64) -> Option<Value> {
     use Value::*;
-    if let Some(ret) = instr.get_type() {
-        if matches!(ret, bril_rs::Type::Float | bril_rs::Type::Char) {
-            return None;
-        }
-    }
     match instr {
         Instruction::Value { op, args, .. } => match op {
             ValueOps::Add => Some(Add(env[&args[0]], env[&args[1]])),
@@ -289,11 +304,12 @@ fn make_val(instr: &Instruction, env: &Env, uid: &mut u64) -> Option<Value> {
             ValueOps::Or => Some(Or(env[&args[0]], env[&args[1]])),
             ValueOps::Not => Some(Not(env[&args[0]])),
             ValueOps::PtrAdd => Some(PtrAdd(env[&args[0]], env[&args[1]])),
-            ValueOps::Call | ValueOps::Load | ValueOps::Alloc => {
+            _ => {
+                // any other value op we consider returning a new value we can't
+                // reason about
                 *uid += 1;
                 Some(Unique(*uid - 1))
             }
-            _ => None,
         },
         Instruction::Constant {
             value: Literal::Bool(value),
@@ -301,14 +317,24 @@ fn make_val(instr: &Instruction, env: &Env, uid: &mut u64) -> Option<Value> {
         } => Some(Bool(*value)),
         Instruction::Constant {
             value: Literal::Int(value),
+            const_type: bril_rs::Type::Float,
+            ..
+        } => Some(IntAsFloat(*value)),
+        Instruction::Constant {
+            value: Literal::Int(value),
             ..
         } => Some(Int(*value)),
-        Instruction::Constant { .. } | Instruction::Effect { .. } => None,
+        Instruction::Constant { .. } => {
+            *uid += 1;
+            Some(Unique(*uid - 1))
+        }
+        Instruction::Effect { .. } => None,
     }
 }
 
 /// Generates a value instruction from `op` and `args`
-/// Requires that `original_instr` is not an effect
+/// Requires that `original_instr` is not an effect and uses
+/// it to copy the position and type of the original instruction
 fn make_val_instr(
     op: ValueOps,
     args: Vec<String>,
@@ -328,6 +354,7 @@ fn make_val_instr(
 
 /// Generates a constant instruction from `value`
 /// Requires that `original_instr` is not an effect
+/// and uses it to copy the position and type of the original instruction
 fn make_const_instr(
     value: Literal,
     original_instr: &Instruction,
@@ -341,7 +368,11 @@ fn make_const_instr(
     }
 }
 
-/// Converts a value expression into a value instruction
+/// Converts a value expression into a value or const instruction
+/// # Arguments
+/// * `val` - The value expression to convert
+/// * `locs` - The current locations of value numbers
+/// * `original_instr` - The instruction that `val` was generated from
 #[allow(clippy::too_many_lines)]
 fn val_to_instr(
     val: &Value,
@@ -412,7 +443,9 @@ fn val_to_instr(
             make_val_instr(ValueOps::Not, vec![locs[v].clone()], original_instr)
         }
         Bool(b) => make_const_instr(Literal::Bool(*b), original_instr),
-        Int(i) => make_const_instr(Literal::Int(*i), original_instr),
+        Int(i) | IntAsFloat(i) => {
+            make_const_instr(Literal::Int(*i), original_instr)
+        }
         Unique(_) => original_instr.clone(),
         PtrAdd(v1, v2) => make_val_instr(
             ValueOps::PtrAdd,
@@ -424,6 +457,9 @@ fn val_to_instr(
 
 /// Generate new value numbers for any values we haven't yet seen in the arguments
 /// of an instruction
+/// # Arguments
+/// * `instr` - The instruction to generate new value numbers for its args
+/// * `state` - The current state of the local value numbering structures
 fn gen_new_vals(instr: &Instruction, mut state: LvnState) -> LvnState {
     if let Some(args) = instr.get_args() {
         for a in args {
@@ -438,8 +474,10 @@ fn gen_new_vals(instr: &Instruction, mut state: LvnState) -> LvnState {
     state
 }
 
-/// Generates an instruction from `instr` that assigns
-/// the value of `var` to the destination of `instr`
+/// Generates an instruction from `instr` that copies
+/// `var` to the destination of `instr`
+///
+/// Creates instruction `instr.dest: instr.type = id var;`
 fn make_id_instr(var: &str, instr: &Instruction) -> Instruction {
     match instr {
         Instruction::Constant {
@@ -480,11 +518,25 @@ fn make_id_instr(var: &str, instr: &Instruction) -> Instruction {
 
 /// If `instr` overwrites a variable which housed a value number, add a new id instruction
 /// to copy the old value into a new home and update the location of the value number
+/// # Arguments
+/// * `instr` - The instruction that might be overwriting a home
+/// * `state` - The current state of the local value numbering structures
+/// * `new_instrs` - The new instructions generated so far
+/// # Returns
+/// * `state` - The updated state of the local value numbering structures
+/// * `new_instrs` - The updated new instructions which may now contain an extra
+///     id instruction
 fn handle_overwrite(
     instr: &Instruction,
     mut state: LvnState,
     mut new_instrs: Vec<Instruction>,
 ) -> (LvnState, Vec<Instruction>) {
+    if matches!(instr, Instruction::Value { dest, op: ValueOps::Id, args, ..} if args.len() == 1 && &args[0] == dest)
+    {
+        // ignore the instruction:
+        // x: _ = id x;
+        return (state, new_instrs);
+    }
     // if dest
     if let Some(dest) = instr.get_dest() {
         let mut rehome = None;
@@ -518,6 +570,8 @@ fn handle_overwrite(
 
 /// Update the environment with the new value number for the destination
 /// of the instruction
+///
+/// `env = env U (instr.dest, val_num)`
 fn update_env(instr: &Instruction, val_num: ValNum, mut env: Env) -> Env {
     if let Some(dest) = instr.get_dest() {
         env.insert(dest, val_num);
@@ -525,7 +579,11 @@ fn update_env(instr: &Instruction, val_num: ValNum, mut env: Env) -> Env {
     env
 }
 
-/// Rewrites the arguments of `instr` to use the new value numbers
+/// Rewrites the arguments of `instr` to use the
+/// homes of the value numbers of its arguments
+///
+/// Essentially canonicalizes the instruction with by replacing each argument with
+/// the canonical home variable for its val number
 fn rewrite_instr(instr: &mut Instruction, state: &LvnState) {
     if let Some(args) = instr.get_args_mut() {
         for arg in args {
@@ -553,7 +611,16 @@ fn update_consts(
     val_num: ValNum,
     mut consts: Consts,
 ) -> Consts {
-    if let Instruction::Constant { value, .. } = instr {
+    // we only do constant folding on bools, ints, and pointers.
+    // Simply because I'd have to change the data structures to support
+    // floating point values as keys
+    if let Instruction::Constant {
+        value,
+        const_type:
+            bril_rs::Type::Bool | bril_rs::Type::Int | bril_rs::Type::Pointer(_),
+        ..
+    } = instr
+    {
         consts.insert(val_num, value.clone());
     }
     consts

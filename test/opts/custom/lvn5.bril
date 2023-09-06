@@ -1,0 +1,12 @@
+# ARGS: 4.33
+@main(y: float) {
+    x: int = const 10;
+    print x;
+    x2: float = const 10;
+    z: float = fmul x2 y;
+    print z;
+    x3: float = id x2;
+    x4: float = id x3;
+    print x4;
+
+}
