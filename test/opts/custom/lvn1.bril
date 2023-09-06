@@ -1,0 +1,11 @@
+@main {
+    x: int = const 10;
+    y: int = const 20;
+    c: int = add x y;
+    d: int = add x y;
+    f: int = add c d;
+    print f;
+
+    g: int = id x;
+    print g;
+}

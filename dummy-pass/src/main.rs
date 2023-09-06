@@ -5,7 +5,7 @@ use common_cli::{cli_args, compiler_pass};
 struct ExtraArgs {}
 
 #[compiler_pass(true)]
-fn dummy_pass(graph: Cfg, _args: &CLIArgs) -> Cfg {
+fn dummy_pass(graph: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
     graph
 }
 

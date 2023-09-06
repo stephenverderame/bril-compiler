@@ -7,4 +7,5 @@ members = [
     "dummy-pass",
     "local-dce",
     "common-cli",
+    "lvn",
 ]

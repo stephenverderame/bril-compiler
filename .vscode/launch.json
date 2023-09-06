@@ -8,10 +8,10 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/target/debug/dummy-pass",
+            "program": "${workspaceFolder}/target/debug/lvn",
             "args": [
                 "-f",
-                "${workspaceFolder}/test/opts/custom/debug.json"
+                "${workspaceFolder}/debug.json"
             ],
             "cwd": "${workspaceFolder}"
         }

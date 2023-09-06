@@ -71,8 +71,8 @@ pub struct Cfg {
 /// Returns true if the instruction is a terminator instruction
 /// # Arguments
 /// * `instr` - The instruction
-/// * `single_mode` - If true, then a basic block is a single instruction
-const fn is_terminator(instr: &Instruction) -> bool {
+#[must_use]
+pub const fn is_terminator(instr: &Instruction) -> bool {
     matches!(
         instr,
         Instruction::Effect {

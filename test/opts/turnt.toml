@@ -12,3 +12,7 @@ command = "bril2json < {filename} | cargo run --bin dummy-pass -- --use-blocks f
 [envs.local-dce]
 command = "bril2json < {filename} | cargo run --bin local-dce | brili {args}"
 return_code = 0
+
+[envs.lvn]
+command = "bril2json < {filename} | cargo run --bin lvn | brili {args}"
+return_code = 0

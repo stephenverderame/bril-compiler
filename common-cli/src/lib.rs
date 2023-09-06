@@ -95,7 +95,7 @@ pub fn compiler_pass(attr: TokenStream, item: TokenStream) -> TokenStream {
         fn transform_prog(mut prog: Program, args: &CLIArgs) -> Program {
             for f in &mut prog.functions {
                 let cfg = Cfg::from(f, !args.use_blocks.unwrap_or(#default_use_cfg));
-                let new_body = #name(cfg, args).to_src();
+                let new_body = #name(cfg, args, f).to_src();
                 f.instrs = #postprocess_name(new_body);
             }
             prog

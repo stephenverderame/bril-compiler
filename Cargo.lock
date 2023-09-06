@@ -195,6 +195,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "lvn"
+version = "0.1.0"
+dependencies = [
+ "atty",
+ "bril-rs",
+ "cfg",
+ "clap",
+ "common-cli",
+ "serde_json",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

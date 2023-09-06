@@ -248,9 +248,64 @@ impl Instruction {
     #[must_use]
     pub fn get_pos(&self) -> Option<Position> {
         match self {
-            Self::Constant { pos, .. } | Self::Value { pos, .. } | Self::Effect { pos, .. } => {
-                pos.clone()
+            Self::Constant { pos, .. }
+            | Self::Value { pos, .. }
+            | Self::Effect { pos, .. } => pos.clone(),
+        }
+    }
+
+    /// A helper function to extract the destination variable if it exists from an instruction
+    #[must_use]
+    pub fn get_dest(&self) -> Option<String> {
+        match self {
+            Self::Constant { dest, .. } | Self::Value { dest, .. } => {
+                Some(dest.clone())
             }
+            Self::Effect { .. } => None,
+        }
+    }
+
+    /// A helper function to extract the arguments if they exist from an instruction
+    #[must_use]
+    pub fn get_args(&self) -> Option<&[String]> {
+        match self {
+            Self::Constant { .. } => None,
+            Self::Value { args, .. } | Self::Effect { args, .. } => Some(args),
+        }
+    }
+
+    /// A helper function to determine if the instruction is pure (no side effects)
+    #[must_use]
+    pub const fn is_pure(&self) -> bool {
+        !matches!(
+            self,
+            Self::Effect { .. }
+                | Self::Value {
+                    op: ValueOps::Load
+                        | ValueOps::Alloc
+                        | ValueOps::Call
+                        | ValueOps::Phi,
+                    ..
+                }
+        )
+    }
+
+    /// A helper function to extract the type if it exists from an instruction
+    #[must_use]
+    pub fn get_type(&self) -> Option<Type> {
+        match self {
+            Self::Constant { const_type, .. } => Some(const_type.clone()),
+            Self::Value { op_type, .. } => Some(op_type.clone()),
+            Self::Effect { .. } => None,
+        }
+    }
+
+    /// A helper function to extract the args if they exists from an instruction
+    #[must_use]
+    pub fn get_args_mut(&mut self) -> Option<&mut Vec<String>> {
+        match self {
+            Self::Constant { .. } => None,
+            Self::Value { args, .. } | Self::Effect { args, .. } => Some(args),
         }
     }
 }
