@@ -9,3 +9,11 @@ pipeline = ["bril2json", "cargo run --bin dummy-pass", "brili -p {args}"]
 
 [runs.local-dce]
 pipeline = ["bril2json", "cargo run --bin local-dce", "brili -p {args}"]
+
+[runs.lvn]
+pipeline = [
+    "bril2json",
+    "cargo run --bin lvn",
+    "cargo run --bin local-dce",
+    "brili -p {args}",
+]

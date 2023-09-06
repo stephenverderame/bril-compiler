@@ -30,14 +30,19 @@ enum Value {
     Gt(ValNum, ValNum),
     Le(ValNum, ValNum),
     Ge(ValNum, ValNum),
+    And(ValNum, ValNum),
+    Or(ValNum, ValNum),
+    Not(ValNum),
     Bool(bool),
     Int(i64),
+    PtrAdd(ValNum, ValNum),
     /// A unique value for values we cannot reason about such as calls
     Unique(u64),
 }
 
 type Env = HashMap<String, ValNum>;
 type Locs = HashMap<ValNum, String>;
+type Consts = HashMap<ValNum, Literal>;
 type Vns = HashMap<Value, ValNum>;
 
 /// The state of the data structures used in local value numbering
@@ -51,6 +56,8 @@ struct LvnState {
     /// Maps value expressions to their value numbers
     /// Invariant: `forall (k, v) in vns, v in locs.keys()`
     vns: Vns,
+    /// Maps value numbers to their constant values if they are constants
+    consts: Consts,
     cur_val: ValNum,
     lvn_temp_num: u64,
 }
@@ -62,6 +69,7 @@ impl LvnState {
             locs: self.locs.clone(),
             vns: self.vns.clone(),
             cur_val: self.cur_val,
+            consts: self.consts.clone(),
             lvn_temp_num,
         }
     }
@@ -81,6 +89,7 @@ fn initialize_lvn(func: &Function) -> LvnState {
         env,
         locs,
         vns,
+        consts: Consts::new(),
         cur_val: ValNum(func.args.len()),
         lvn_temp_num: 0,
     }
@@ -99,10 +108,160 @@ fn lvn(mut cfg: Cfg, _args: &CLIArgs, func: &Function) -> Cfg {
     cfg
 }
 
+fn sort_val_nums(v1: ValNum, v2: ValNum) -> (ValNum, ValNum) {
+    if v1 < v2 {
+        (v1, v2)
+    } else {
+        (v2, v1)
+    }
+}
+
+/// Simplifies a value expression if possible using constant folding and
+/// algebraic identities
+#[allow(clippy::too_many_lines)]
+fn simplify(v: Value, consts: &Consts) -> Value {
+    match v {
+        Value::Add(a, b) => match (consts.get(&a), consts.get(&b)) {
+            (Some(Literal::Int(a)), Some(Literal::Int(b))) => Value::Int(a + b),
+            (Some(Literal::Int(0)), _) => Value::Id(b),
+            (_, Some(Literal::Int(0))) => Value::Id(a),
+            _ => {
+                let (a, b) = sort_val_nums(a, b);
+                Value::Add(a, b)
+            }
+        },
+        Value::Mul(a, b) => match (consts.get(&a), consts.get(&b)) {
+            (Some(Literal::Int(a)), Some(Literal::Int(b))) => Value::Int(a * b),
+            (Some(Literal::Int(0)), _) | (_, Some(Literal::Int(0))) => {
+                Value::Int(0)
+            }
+            (Some(Literal::Int(1)), _) => Value::Id(b),
+            (_, Some(Literal::Int(1))) => Value::Id(a),
+            (Some(Literal::Int(2)), _) => Value::Add(b, b),
+            (_, Some(Literal::Int(2))) => Value::Add(a, a),
+            _ => {
+                let (a, b) = sort_val_nums(a, b);
+                Value::Mul(a, b)
+            }
+        },
+        Value::And(a, b) => match (consts.get(&a), consts.get(&b)) {
+            (Some(Literal::Bool(a)), Some(Literal::Bool(b))) => {
+                Value::Bool(*a && *b)
+            }
+            (Some(Literal::Bool(false)), _)
+            | (_, Some(Literal::Bool(false))) => Value::Bool(false),
+            (Some(Literal::Bool(true)), _) => Value::Id(b),
+            (_, Some(Literal::Bool(true))) => Value::Id(a),
+            _ => {
+                let (a, b) = sort_val_nums(a, b);
+                Value::And(a, b)
+            }
+        },
+        Value::Or(a, b) => match (consts.get(&a), consts.get(&b)) {
+            (Some(Literal::Bool(a)), Some(Literal::Bool(b))) => {
+                Value::Bool(*a || *b)
+            }
+            (Some(Literal::Bool(true)), _) | (_, Some(Literal::Bool(true))) => {
+                Value::Bool(true)
+            }
+            (Some(Literal::Bool(false)), _) => Value::Id(b),
+            (_, Some(Literal::Bool(false))) => Value::Id(a),
+            _ => {
+                let (a, b) = sort_val_nums(a, b);
+                Value::Or(a, b)
+            }
+        },
+        Value::Not(a) => match consts.get(&a) {
+            Some(Literal::Bool(b)) => Value::Bool(!b),
+            _ => Value::Not(a),
+        },
+        Value::Sub(a, b) => {
+            if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
+                (consts.get(&a), consts.get(&b))
+            {
+                Value::Int(a - b)
+            } else {
+                Value::Sub(a, b)
+            }
+        }
+        Value::Div(a, b) => {
+            if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
+                (consts.get(&a), consts.get(&b))
+            {
+                Value::Int(a / b)
+            } else {
+                Value::Div(a, b)
+            }
+        }
+        Value::Eq(a, b) => {
+            if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
+                (consts.get(&a), consts.get(&b))
+            {
+                Value::Bool(a == b)
+            } else {
+                let (a, b) = sort_val_nums(a, b);
+                Value::Eq(a, b)
+            }
+        }
+        Value::Lt(a, b) => {
+            if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
+                (consts.get(&a), consts.get(&b))
+            {
+                Value::Bool(a < b)
+            } else {
+                Value::Lt(a, b)
+            }
+        }
+        Value::Gt(a, b) => {
+            if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
+                (consts.get(&a), consts.get(&b))
+            {
+                Value::Bool(a > b)
+            } else {
+                Value::Gt(a, b)
+            }
+        }
+        Value::Le(a, b) => {
+            if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
+                (consts.get(&a), consts.get(&b))
+            {
+                Value::Bool(a <= b)
+            } else {
+                Value::Le(a, b)
+            }
+        }
+        Value::Ge(a, b) => {
+            if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
+                (consts.get(&a), consts.get(&b))
+            {
+                Value::Bool(a >= b)
+            } else {
+                Value::Ge(a, b)
+            }
+        }
+        Value::Bool(_) | Value::Int(_) | Value::Unique(_) => v,
+        Value::Id(v) => {
+            consts
+                .get(&v)
+                .map_or(Value::Id(v), |const_val| match const_val {
+                    Literal::Bool(b) => Value::Bool(*b),
+                    Literal::Int(i) => Value::Int(*i),
+                    _ => unreachable!(),
+                })
+        }
+        Value::PtrAdd(a, b) => match (consts.get(&a), consts.get(&b)) {
+            (Some(Literal::Int(0)), _) => Value::Id(b),
+            (_, Some(Literal::Int(0))) => Value::Id(a),
+            _ => Value::PtrAdd(a, b),
+        },
+    }
+}
+
+/// Makes a value expression for `instr` if possible
 fn make_val(instr: &Instruction, env: &Env, uid: &mut u64) -> Option<Value> {
     use Value::*;
     if let Some(ret) = instr.get_type() {
-        if ret != bril_rs::Type::Int && ret != bril_rs::Type::Bool {
+        if matches!(ret, bril_rs::Type::Float | bril_rs::Type::Char) {
             return None;
         }
     }
@@ -118,7 +277,11 @@ fn make_val(instr: &Instruction, env: &Env, uid: &mut u64) -> Option<Value> {
             ValueOps::Le => Some(Le(env[&args[0]], env[&args[1]])),
             ValueOps::Ge => Some(Ge(env[&args[0]], env[&args[1]])),
             ValueOps::Id => Some(Id(env[&args[0]])),
-            ValueOps::Call | ValueOps::Load => {
+            ValueOps::And => Some(And(env[&args[0]], env[&args[1]])),
+            ValueOps::Or => Some(Or(env[&args[0]], env[&args[1]])),
+            ValueOps::Not => Some(Not(env[&args[0]])),
+            ValueOps::PtrAdd => Some(PtrAdd(env[&args[0]], env[&args[1]])),
+            ValueOps::Call | ValueOps::Load | ValueOps::Alloc => {
                 *uid += 1;
                 Some(Unique(*uid - 1))
             }
@@ -227,9 +390,27 @@ fn val_to_instr(
         Id(v) => {
             make_val_instr(ValueOps::Id, vec![locs[v].clone()], original_instr)
         }
+        And(v1, v2) => make_val_instr(
+            ValueOps::And,
+            vec![locs[v1].clone(), locs[v2].clone()],
+            original_instr,
+        ),
+        Or(v1, v2) => make_val_instr(
+            ValueOps::Or,
+            vec![locs[v1].clone(), locs[v2].clone()],
+            original_instr,
+        ),
+        Not(v) => {
+            make_val_instr(ValueOps::Not, vec![locs[v].clone()], original_instr)
+        }
         Bool(b) => make_const_instr(Literal::Bool(*b), original_instr),
         Int(i) => make_const_instr(Literal::Int(*i), original_instr),
         Unique(_) => original_instr.clone(),
+        PtrAdd(v1, v2) => make_val_instr(
+            ValueOps::PtrAdd,
+            vec![locs[v1].clone(), locs[v2].clone()],
+            original_instr,
+        ),
     }
 }
 
@@ -356,6 +537,20 @@ fn get_val_num(value: &Value, vns: &Vns) -> Option<ValNum> {
     }
 }
 
+/// Updates the constants map if `instr` is a constant instruction
+/// This will add a mapping to `consts` from `val_num` to the constant value
+/// of `instr`
+fn update_consts(
+    instr: &Instruction,
+    val_num: ValNum,
+    mut consts: Consts,
+) -> Consts {
+    if let Instruction::Constant { value, .. } = instr {
+        consts.insert(val_num, value.clone());
+    }
+    consts
+}
+
 /// Performs local value numbering on a basic block
 /// # Arguments
 /// * `block` - The basic block to perform local value numbering on
@@ -368,7 +563,8 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
     for instr in block.instrs.iter_mut().chain(block.terminator.as_mut()) {
         state = gen_new_vals(instr, state);
         rewrite_instr(instr, &state);
-        let val = make_val(instr, &state.env, &mut uid);
+        let val = make_val(instr, &state.env, &mut uid)
+            .map(|v| simplify(v, &state.consts));
         if let Some(val) = val {
             *instr = val_to_instr(&val, &state.locs, instr);
             (state, new_instrs) = handle_overwrite(instr, state, new_instrs);
@@ -379,6 +575,8 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
                         state.cur_val,
                         instr.get_dest().unwrap().clone(),
                     );
+                    state.consts =
+                        update_consts(instr, state.cur_val, state.consts);
                     let r = state.cur_val;
                     state.cur_val = state.cur_val.next();
                     r
