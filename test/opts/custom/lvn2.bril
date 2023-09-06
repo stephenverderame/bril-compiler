@@ -1,0 +1,11 @@
+@main {
+    x: int = const 10;
+    y: int = id x;
+    z: int = id y;
+    w: int = id z;
+    z: int = mul w w;
+    print z;
+
+    z: int = const 10;
+    print z;
+}

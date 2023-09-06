@@ -1,0 +1,24 @@
+@f(x: int) : int {
+    y: int = add x x;
+    z: int = add x x;
+    y: int = const 10;
+    z: int = const 20;
+    w: int = add x x;
+    r: int = add y z;
+    r: int = add r w;
+    ret r;
+}
+
+@main {
+    a: int = const 10;
+    r: int = call @f a;
+    print r;
+
+    b: int = const 2;
+    zero: int = const 0;
+    r: int = mul r b;
+    g: int = add r zero;
+    print g;
+    z: int = mul g zero;
+    print z;
+}

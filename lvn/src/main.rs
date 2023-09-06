@@ -18,6 +18,7 @@ impl ValNum {
     }
 }
 
+/// A value expression which is given a value number
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Value {
     Add(ValNum, ValNum),
@@ -63,6 +64,8 @@ struct LvnState {
 }
 
 impl LvnState {
+    /// Creates a new state with the same data structures as `self` but with
+    /// a new value number for the next value expression
     fn prototype(&self, lvn_temp_num: u64) -> Self {
         Self {
             env: self.env.clone(),
@@ -75,6 +78,7 @@ impl LvnState {
     }
 }
 
+/// Initializes the data structures used in local value numbering
 fn initialize_lvn(func: &Function) -> LvnState {
     let mut env = Env::new();
     let mut locs = Locs::new();
@@ -108,6 +112,8 @@ fn lvn(mut cfg: Cfg, _args: &CLIArgs, func: &Function) -> Cfg {
     cfg
 }
 
+/// Sorts two value numbers so that the smaller value number is first
+/// This allows commutativity in value numbering
 fn sort_val_nums(v1: ValNum, v2: ValNum) -> (ValNum, ValNum) {
     if v1 < v2 {
         (v1, v2)
@@ -194,7 +200,9 @@ fn simplify(v: Value, consts: &Consts) -> Value {
             }
         }
         Value::Eq(a, b) => {
-            if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
+            if a == b {
+                Value::Bool(true)
+            } else if let (Some(Literal::Int(a)), Some(Literal::Int(b))) =
                 (consts.get(&a), consts.get(&b))
             {
                 Value::Bool(a == b)

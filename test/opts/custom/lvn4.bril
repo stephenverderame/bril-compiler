@@ -1,0 +1,21 @@
+# ARGS: 10
+@main(a: int) {
+    b: int = id a;
+    c: int = id b;
+    d: int = const 20;
+    b: bool = lt a d;
+    b: bool = eq a a;
+    print b;
+    b: bool = lt a d;
+    print b;
+    call @f c;
+
+}
+
+@f(a: int) {
+    b: int = const 20;
+    c: int = add a b;
+    d: int = add b a;
+    w: int = add c d;
+    print w;
+}
