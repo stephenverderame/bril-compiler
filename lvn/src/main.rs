@@ -493,11 +493,10 @@ fn make_id_instr(
     instr: &Instruction,
     state: &LvnState,
 ) -> Instruction {
-    if let Some(lit) = state.consts.get(&vn) {
-        make_const_instr(lit.clone(), instr)
-    } else {
-        make_val_instr(ValueOps::Id, vec![state.locs[&vn].clone()], instr)
-    }
+    state.consts.get(&vn).map_or_else(
+        || make_val_instr(ValueOps::Id, vec![state.locs[&vn].clone()], instr),
+        |lit| make_const_instr(lit.clone(), instr),
+    )
 }
 
 /// If `instr` overwrites a variable which housed a value number, add a new id instruction
