@@ -377,6 +377,7 @@ fn make_const_instr(
 fn val_to_instr(
     val: &Value,
     locs: &Locs,
+    consts: &Consts,
     original_instr: &Instruction,
 ) -> Instruction {
     use Value::*;
@@ -426,9 +427,16 @@ fn val_to_instr(
             vec![locs[v1].clone(), locs[v2].clone()],
             original_instr,
         ),
-        Id(v) => {
-            make_val_instr(ValueOps::Id, vec![locs[v].clone()], original_instr)
-        }
+        Id(v) => consts.get(v).map_or_else(
+            || {
+                make_val_instr(
+                    ValueOps::Id,
+                    vec![locs[v].clone()],
+                    original_instr,
+                )
+            },
+            |literal| make_const_instr(literal.clone(), original_instr),
+        ),
         And(v1, v2) => make_val_instr(
             ValueOps::And,
             vec![locs[v1].clone(), locs[v2].clone()],
@@ -475,44 +483,20 @@ fn gen_new_vals(instr: &Instruction, mut state: LvnState) -> LvnState {
 }
 
 /// Generates an instruction from `instr` that copies
-/// `var` to the destination of `instr`
+/// value of `vn` to the destination of `instr`
 ///
-/// Creates instruction `instr.dest: instr.type = id var;`
-fn make_id_instr(var: &str, instr: &Instruction) -> Instruction {
-    match instr {
-        Instruction::Constant {
-            dest,
-            op: _,
-            pos,
-            const_type,
-            value: _,
-        } => Instruction::Value {
-            dest: dest.to_string(),
-            op: ValueOps::Id,
-            args: vec![var.to_string()],
-            pos: pos.clone(),
-            funcs: vec![],
-            labels: vec![],
-            op_type: const_type.clone(),
-        },
-        Instruction::Value {
-            dest,
-            op: _,
-            pos,
-            op_type,
-            args: _,
-            funcs,
-            labels,
-        } => Instruction::Value {
-            dest: dest.to_string(),
-            op: ValueOps::Id,
-            args: vec![var.to_string()],
-            pos: pos.clone(),
-            funcs: funcs.clone(),
-            labels: labels.clone(),
-            op_type: op_type.clone(),
-        },
-        Instruction::Effect { .. } => panic!("Expected constant or effect"),
+/// Creates instruction `instr.dest: instr.type = id state.locs[vn];`
+/// If `vn` is known to be a constant, creates a constant instruction instead
+/// `instr.dest: instr.type = const state.consts[vn];`
+fn make_id_instr(
+    vn: ValNum,
+    instr: &Instruction,
+    state: &LvnState,
+) -> Instruction {
+    if let Some(lit) = state.consts.get(&vn) {
+        make_const_instr(lit.clone(), instr)
+    } else {
+        make_val_instr(ValueOps::Id, vec![state.locs[&vn].clone()], instr)
     }
 }
 
@@ -641,7 +625,7 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
         let val = make_val(instr, &state.env, &mut uid)
             .map(|v| simplify(v, &state.consts));
         if let Some(val) = val {
-            *instr = val_to_instr(&val, &state.locs, instr);
+            *instr = val_to_instr(&val, &state.locs, &state.consts, instr);
             (state, new_instrs) = handle_overwrite(instr, state, new_instrs);
             let val_num = match get_val_num(&val, &state.vns) {
                 None => {
@@ -657,7 +641,7 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
                     r
                 }
                 Some(num) => {
-                    *instr = make_id_instr(&state.locs[&num], instr);
+                    *instr = make_id_instr(num, instr, &state);
                     num
                 }
             };

@@ -17,6 +17,10 @@ Most tests come from [https://github.com/sampsyo/bril](https://github.com/sampsy
 * `dummy-pass` - Simply converts a bril program into a CFG and back into a bril program.
 Removes unnecessary jumps in the conversion process.
 * `local-dce` - Dead code elimination as a local optimization performed on basic
-blocks.
+blocks. Also performs trivial global DCE by removing all pure instructions which
+don't have their return values read
 * `common-cli` - Procedural macros for the basic CLI options and interactions for
 compiler passes
+* `lvn` - Local value numbering performed on basic blocks. Also does 
+constant folding, constant propagation, copy propagation, and algebraic simplification
+at a basic block level.
