@@ -1,0 +1,14 @@
+digraph {
+	subgraph cluster_main {
+		label="main()";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="[]\n----------\nx := 42\ny := 30\ny2 := 5\nz := y - y2\nb := x < z\nif b\n----------\n[x, y]", shape="rectangle", style="rounded"];
+		main_3 [label="[x]\n----------\nprint x\n----------\n[]", shape="rectangle", style="rounded"];
+		main_4 [label="[y]\n----------\nprint y\n----------\n[]", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+		main_2 -> main_3 [label="T"];
+		main_2 -> main_4 [label="F"];
+	}
+}

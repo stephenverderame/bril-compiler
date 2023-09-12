@@ -1,0 +1,13 @@
+@main (a: int){
+    cnt: int = const 0;
+.head:
+    cond: bool = lt cnt a;
+    br cond .body .end;
+.body:
+    one: int = const 1;
+    cnt: int = add cnt one;
+    print cnt;
+    jmp .head;
+.end:
+
+}

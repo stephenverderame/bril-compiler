@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use bril_rs::{Code, EffectOps, Function, Instruction, ValueOps};
 
+pub mod analysis;
 mod cfg2src;
 mod src2cfg;
 pub use cfg2src::to_src;
@@ -192,7 +193,9 @@ impl CfgNode {
                 }
                 write!(f, "")
             }
-            EffectOps::Print => write!(f, "print {}", args.get(0).unwrap()),
+            EffectOps::Print => {
+                write!(f, "print {}", args.get(0).unwrap())
+            }
             EffectOps::Nop => panic!("Nop should not be in CFG"),
             EffectOps::Store => {
                 write!(
@@ -247,10 +250,21 @@ impl std::fmt::Display for CfgNode {
             Self::Start => write!(f, "START"),
             Self::End => write!(f, "END"),
             Self::Block(BasicBlock { instrs, terminator }) => {
+                let hide_terminator = matches!(
+                    terminator,
+                    Some(Instruction::Effect {
+                        op: EffectOps::Jump,
+                        ..
+                    })
+                );
+                let total_size =
+                    instrs.len() + terminator.as_ref().map_or(0, |_| 1);
                 for (idx, instr) in instrs.iter().chain(terminator).enumerate()
                 {
                     Self::fmt_instruction(instr, f)?;
-                    if idx < instrs.len() {
+                    if idx < total_size.max(2) - 2 && hide_terminator
+                        || !hide_terminator && idx < total_size - 1
+                    {
                         write!(f, "\\n")?;
                     }
                 }

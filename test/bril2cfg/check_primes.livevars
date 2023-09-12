@@ -1,0 +1,45 @@
+digraph {
+	subgraph cluster_main {
+		label="main(n: int)";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="[n]\n----------\nv2 := 1\ni := v2\n----------\n[i, n]", shape="rectangle", style="rounded"];
+		main_3 [label="[i, n]\n----------\nv3 := i\nv4 := n\nv5 := v3 < v4\nif v5\n----------\n[i, n]", shape="rectangle", style="rounded"];
+		main_4 [label="[i, n]\n----------\nv6 := i\nisPrime := checkPrime(v6)\nisPrime := isPrime\nv8 := isPrime\nif v8\n----------\n[i, n]", shape="rectangle", style="rounded"];
+		main_5 [label="[i, n]\n----------\nv9 := 1\nprint v9\nv10 := 0\n----------\n[i, n]", shape="rectangle", style="rounded"];
+		main_6 [label="[i, n]\n----------\nv11 := 0\nprint v11\nv12 := 0\n----------\n[i, n]", shape="rectangle", style="rounded"];
+		main_7 [label="[i, n]\n----------\nv13 := i\nv14 := 1\nv15 := v13 + v14\ni := v15\n----------\n[i, n]", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4 [label="T"];
+		main_4 -> main_5 [label="T"];
+		main_4 -> main_6 [label="F"];
+		main_5 -> main_7;
+		main_6 -> main_7;
+		main_7 -> main_3;
+	}
+	subgraph cluster_checkPrime {
+		label="checkPrime(x: int)";
+		rankdir="TB";
+		checkPrime_0 [label="START", shape="rectangle", style="rounded"];
+		checkPrime_2 [label="[x]\n----------\nv1 := x\nv2 := 1\nv3 := v1 <= v2\nif v3\n----------\n[x]", shape="rectangle", style="rounded"];
+		checkPrime_3 [label="[]\n----------\nv4 := false\nreturn v4\n----------\n[]", shape="rectangle", style="rounded"];
+		checkPrime_4 [label="[x]\n----------\nv6 := 2\ni := v6\n----------\n[i, x]", shape="rectangle", style="rounded"];
+		checkPrime_5 [label="[i, x]\n----------\nv7 := i\nv8 := x\nv9 := v7 < v8\nif v9\n----------\n[i, x]", shape="rectangle", style="rounded"];
+		checkPrime_6 [label="[i, x]\n----------\nv10 := x\nv11 := i\nv12 := v10 / v11\ndiv := v12\nv13 := div\nv14 := i\nv15 := v13 * v14\nv16 := x\nv17 := v15 == v16\nisDivisible := v17\nv19 := isDivisible\nif v19\n----------\n[i, x]", shape="rectangle", style="rounded"];
+		checkPrime_7 [label="[]\n----------\nv20 := false\nreturn v20\n----------\n[]", shape="rectangle", style="rounded"];
+		checkPrime_8 [label="[i, x]\n----------\nv21 := i\nv22 := 1\nv23 := v21 + v22\ni := v23\n----------\n[i, x]", shape="rectangle", style="rounded"];
+		checkPrime_9 [label="[]\n----------\nv24 := true\nreturn v24\n----------\n[]", shape="rectangle", style="rounded"];
+
+		checkPrime_0 -> checkPrime_2;
+		checkPrime_2 -> checkPrime_3 [label="T"];
+		checkPrime_2 -> checkPrime_4 [label="F"];
+		checkPrime_4 -> checkPrime_5;
+		checkPrime_5 -> checkPrime_6 [label="T"];
+		checkPrime_5 -> checkPrime_9 [label="F"];
+		checkPrime_6 -> checkPrime_7 [label="T"];
+		checkPrime_6 -> checkPrime_8 [label="F"];
+		checkPrime_8 -> checkPrime_5;
+	}
+}

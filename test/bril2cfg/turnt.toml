@@ -1,2 +1,9 @@
+[envs.cfg]
 command = "cat {filename} | bril2json | cargo run --bin bril2cfg"
 return_code = 0
+output.cfg = "-"
+
+[envs.livevars]
+command = "bril2json < {filename} | cargo run --bin bril2cfg -- --df live_vars"
+return_code = 0
+output.livevars = "-"
