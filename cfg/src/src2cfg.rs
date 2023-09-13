@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::*;
 impl Cfg {
     /// Finishes the current block and adds it to the CFG
@@ -182,43 +184,10 @@ impl Cfg {
     /// the resulant `adj_list` and blocks, and then cleans the CFG
     /// which removes unreachable nodes
     fn splice_out_goto_and_make_self(
-        mut adj_lst: HashMap<usize, CfgEdgeTo>,
+        adj_lst: HashMap<usize, CfgEdgeTo>,
         blocks: BTreeMap<usize, CfgNode>,
         labels_map: HashMap<String, usize>,
     ) -> Self {
-        for (self_id, edge) in &mut adj_lst {
-            match edge {
-                CfgEdgeTo::Branch {
-                    true_node,
-                    false_node,
-                } => {
-                    *true_node = Self::get_next_real_node(
-                        &blocks,
-                        *true_node,
-                        &labels_map,
-                        None,
-                    )
-                    .unwrap_or(*self_id);
-                    *false_node = Self::get_next_real_node(
-                        &blocks,
-                        *false_node,
-                        &labels_map,
-                        None,
-                    )
-                    .unwrap_or(*self_id);
-                }
-                CfgEdgeTo::Next(next) => {
-                    *next = Self::get_next_real_node(
-                        &blocks,
-                        *next,
-                        &labels_map,
-                        None,
-                    )
-                    .unwrap_or(*self_id);
-                }
-                CfgEdgeTo::Terminal => {}
-            }
-        }
         Self {
             blocks,
             adj_lst,
@@ -245,86 +214,93 @@ impl Cfg {
     /// If `id` is the starting id, then we have an infinite loop
     /// and we return `None`
     /// # Arguments
-    /// * `blocks` - A map from node id to instruction
     /// * `id` - The id of the jump instruction
-    /// * `labels_map` - A map from label to node id
-    /// * `starting_id` - The id of the first jump instruction in the chain or
-    /// `None` if this is the first jump instruction in the chain
-    ///
+    /// * `starting_id` - The id of the jump instruction that started the chain or
+    ///    `None` if this is the first jump instruction in the chain
     /// # Returns
-    /// * `Some(id)` where `id` is the id of the next real node or `None` if
-    ///  there is an infinite loop
-    fn get_next_real_node(
-        blocks: &BTreeMap<usize, CfgNode>,
-        id: usize,
-        labels_map: &HashMap<String, usize>,
+    /// * The id of the next real node or `None` if there is an infinite loop
+    fn next_real_node(
+        &self,
+        node: usize,
         starting_id: Option<usize>,
     ) -> Option<usize> {
-        if starting_id.map_or(false, |first_id| id == first_id) {
+        if matches!(starting_id, Some(id) if id == node) {
             // infinite loop
             return None;
         }
-        // we don't worry about totally empty blocks
-        // because we never construct a block that is completely empty
-        // ie:
-        // ```
-        // .foo:
-        // .bar:
-        // ```
-        // this is handled
-        if let Some(CfgNode::Block(BasicBlock {
-            terminator:
-                Some(Instruction::Effect {
-                    op: EffectOps::Jump,
-                    labels: dest_labels,
-                    ..
-                }),
-            instrs,
-        })) = blocks.get(&id)
-        {
-            if instrs.is_empty() {
-                return Self::get_next_real_node(
-                    blocks,
-                    *labels_map.get(dest_labels.get(0).unwrap()).unwrap(),
-                    labels_map,
-                    starting_id.or(Some(id)),
-                );
+        match &self.blocks.get(&node) {
+            Some(CfgNode::Block(BasicBlock {
+                terminator:
+                    None
+                    | Some(Instruction::Effect {
+                        op: EffectOps::Jump,
+                        ..
+                    }),
+                instrs,
+                ..
+            })) if instrs.is_empty() => {
+                if let Some(CfgEdgeTo::Next(next)) = self.adj_lst.get(&node) {
+                    self.next_real_node(*next, starting_id.or(Some(node)))
+                } else {
+                    Some(node)
+                }
             }
+            _ => Some(node),
         }
-        Some(id)
     }
 
-    /// Remove unreachable nodes from the CFG
-    /// Unreachable nodes occur when we splice out jumps when
-    /// constructing the cfg. Prior to cleaning, the
-    /// adjacency list may contain such jumps that have
-    /// been spliced out. Cleaning will remove these jumps
-    fn clean(mut self) -> Self {
-        let mut keeps = vec![];
+    /// Removes unreachable nodes, empty blocks, and blocks that just contain jumps
+    /// from the CFG
+    /// # Returns
+    /// * The cleaned CFG
+    /// # Panics
+    /// If an internal error occurs
+    #[must_use]
+    pub fn clean(mut self) -> Self {
+        let mut visited = HashSet::new();
         let mut q = VecDeque::new();
+        let mut new_adj_list = HashMap::new();
         q.push_back(CFG_START_ID);
         while !q.is_empty() {
             let reachable = q.pop_front().unwrap();
-            if keeps.contains(&reachable) {
+            if visited.contains(&reachable) {
                 continue;
             }
-            keeps.push(reachable);
+            visited.insert(reachable);
             match self.adj_lst.get(&reachable) {
                 Some(CfgEdgeTo::Next(next)) => {
-                    q.push_back(*next);
+                    let new_nxt =
+                        self.next_real_node(*next, None).unwrap_or(reachable);
+                    new_adj_list.insert(reachable, CfgEdgeTo::Next(new_nxt));
+                    q.push_back(new_nxt);
                 }
                 Some(CfgEdgeTo::Branch {
                     true_node,
                     false_node,
                 }) => {
-                    q.push_back(*true_node);
-                    q.push_back(*false_node);
+                    let true_node = self
+                        .next_real_node(*true_node, None)
+                        .unwrap_or(reachable);
+                    let false_node = self
+                        .next_real_node(*false_node, None)
+                        .unwrap_or(reachable);
+                    new_adj_list.insert(
+                        reachable,
+                        CfgEdgeTo::Branch {
+                            true_node,
+                            false_node,
+                        },
+                    );
+                    q.push_back(true_node);
+                    q.push_back(false_node);
                 }
-                Some(CfgEdgeTo::Terminal) | None => {}
+                Some(CfgEdgeTo::Terminal) | None => {
+                    new_adj_list.insert(reachable, CfgEdgeTo::Terminal);
+                }
             }
         }
-        self.adj_lst.retain(|id, _| keeps.contains(id));
-        self.blocks.retain(|id, _| self.adj_lst.contains_key(id));
+        self.blocks.retain(|id, _| new_adj_list.contains_key(id));
+        self.adj_lst = new_adj_list;
         self
     }
 

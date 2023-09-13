@@ -3,14 +3,14 @@ digraph {
 		label="main()";
 		rankdir="TB";
 		main_0 [label="START", shape="rectangle", style="rounded"];
-		main_2 [label="x := 42\n", shape="rectangle", style="rounded"];
-		main_3 [label="y := 30\n", shape="rectangle", style="rounded"];
-		main_4 [label="y2 := 5\n", shape="rectangle", style="rounded"];
-		main_5 [label="z := y - y2\n", shape="rectangle", style="rounded"];
-		main_6 [label="b := x < z\n", shape="rectangle", style="rounded"];
+		main_2 [label="x := 42", shape="rectangle", style="rounded"];
+		main_3 [label="y := 30", shape="rectangle", style="rounded"];
+		main_4 [label="y2 := 5", shape="rectangle", style="rounded"];
+		main_5 [label="z := y - y2", shape="rectangle", style="rounded"];
+		main_6 [label="b := x < z", shape="rectangle", style="rounded"];
 		main_7 [label="if b", shape="rectangle", style="rounded"];
-		main_8 [label="print x\n", shape="rectangle", style="rounded"];
-		main_10 [label="print y\n", shape="rectangle", style="rounded"];
+		main_8 [label="print x", shape="rectangle", style="rounded"];
+		main_10 [label="print y", shape="rectangle", style="rounded"];
 
 		main_0 -> main_2;
 		main_2 -> main_3;

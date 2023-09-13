@@ -149,7 +149,9 @@ fn broadcast_out_facts<T: Fact>(
     adj_lst: &HashMap<usize, Vec<usize>>,
     block: usize,
 ) -> HashMap<usize, T> {
-    if out_fact.len() == 1 {
+    if out_fact.is_empty() {
+        // do nothing (meet w/ top)
+    } else if out_fact.len() == 1 {
         for neighbor in adj_lst.get(&block).unwrap() {
             in_facts.insert(
                 *neighbor,
@@ -192,9 +194,6 @@ pub fn analyze<T: Fact, D: Direction>(cfg: &Cfg) -> AnalysisResult<T> {
         let out_fact;
         (res_in_facts, out_fact) =
             analyze_basic_block::<T, D>(cfg, block, res_in_facts, in_fact);
-        if out_fact.is_empty() {
-            assert!(block == CFG_END_ID || block == CFG_START_ID);
-        }
         let add_neighbors = match out_facts.entry(block) {
             Entry::Occupied(o) => o.get() != &out_fact,
             Entry::Vacant(_) => true,

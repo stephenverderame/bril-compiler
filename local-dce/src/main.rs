@@ -15,7 +15,7 @@ fn dce(mut cfg: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
     }) {
         block_dce(block);
     }
-    cfg
+    cfg.clean()
 }
 
 /// Returns the set of arguments to the instruction
@@ -80,33 +80,39 @@ fn block_dce(block: &mut BasicBlock) {
 
 /// Performs trvial global dead code elimination
 fn dce_post(mut instrs: Vec<Code>) -> Vec<Code> {
-    let mut can_remove = HashSet::new();
-    let mut used_args = HashSet::new();
-    // identify all args
-    for i in &instrs {
-        if let Code::Instruction(instr) = i {
-            if let Some(args) = instr_args(instr) {
-                used_args.extend(args.iter().cloned());
-            }
-        }
-    }
-    // identify destinations that aren't used (non-effects)
-    for i in &instrs {
-        if let Code::Instruction(
-            instr @ (Instruction::Constant { .. } | Instruction::Value { .. }),
-        ) = i
-        {
-            if let Some(dest) = instr_dest(instr) {
-                if !used_args.contains(dest) {
-                    can_remove.insert(instr as *const _);
+    loop {
+        let mut can_remove = HashSet::new();
+        let mut used_args = HashSet::new();
+        // identify all args
+        for i in &instrs {
+            if let Code::Instruction(instr) = i {
+                if let Some(args) = instr_args(instr) {
+                    used_args.extend(args.iter().cloned());
                 }
             }
         }
+        // identify destinations that aren't used (non-effects)
+        for i in &instrs {
+            if let Code::Instruction(
+                instr @ (Instruction::Constant { .. }
+                | Instruction::Value { .. }),
+            ) = i
+            {
+                if let Some(dest) = instr_dest(instr) {
+                    if !used_args.contains(dest) {
+                        can_remove.insert(instr as *const _);
+                    }
+                }
+            }
+        }
+        // remove instructions that compute results that aren't used
+        instrs.retain(|k| match k {
+            Code::Instruction(k) => !can_remove.contains(&(k as *const _)),
+            _ => true,
+        });
+        if can_remove.is_empty() {
+            break;
+        }
     }
-    // remove instructions that compute results that aren't used
-    instrs.retain(|k| match k {
-        Code::Instruction(k) => !can_remove.contains(&(k as *const _)),
-        _ => true,
-    });
     instrs
 }

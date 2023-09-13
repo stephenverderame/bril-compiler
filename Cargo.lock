@@ -144,6 +144,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dce"
+version = "0.1.0"
+dependencies = [
+ "atty",
+ "bril-rs",
+ "cfg",
+ "clap",
+ "common-cli",
+ "serde_json",
+]
+
+[[package]]
 name = "dummy-pass"
 version = "0.1.0"
 dependencies = [

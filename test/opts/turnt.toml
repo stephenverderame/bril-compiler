@@ -16,3 +16,7 @@ return_code = 0
 [envs.lvn]
 command = "bril2json < {filename} | cargo run --bin lvn | brili {args}"
 return_code = 0
+
+[envs.dce]
+command = "bril2json < {filename} | cargo run --bin dce | brili {args}"
+return_code = 0

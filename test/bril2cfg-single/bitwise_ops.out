@@ -3,12 +3,12 @@ digraph {
 		label="mod2(a: int)";
 		rankdir="TB";
 		mod2_0 [label="START", shape="rectangle", style="rounded"];
-		mod2_2 [label="two := 2\n", shape="rectangle", style="rounded"];
-		mod2_3 [label="tmp := a / two\n", shape="rectangle", style="rounded"];
-		mod2_4 [label="tmp2 := tmp * two\n", shape="rectangle", style="rounded"];
-		mod2_5 [label="tmp3 := a - tmp2\n", shape="rectangle", style="rounded"];
-		mod2_6 [label="one := 1\n", shape="rectangle", style="rounded"];
-		mod2_7 [label="ans := one == tmp3\n", shape="rectangle", style="rounded"];
+		mod2_2 [label="two := 2", shape="rectangle", style="rounded"];
+		mod2_3 [label="tmp := a / two", shape="rectangle", style="rounded"];
+		mod2_4 [label="tmp2 := tmp * two", shape="rectangle", style="rounded"];
+		mod2_5 [label="tmp3 := a - tmp2", shape="rectangle", style="rounded"];
+		mod2_6 [label="one := 1", shape="rectangle", style="rounded"];
+		mod2_7 [label="ans := one == tmp3", shape="rectangle", style="rounded"];
 		mod2_8 [label="return ans", shape="rectangle", style="rounded"];
 
 		mod2_0 -> mod2_2;
@@ -23,25 +23,25 @@ digraph {
 		label="loop_subroutine(a: int, b: int, c: bool)";
 		rankdir="TB";
 		loop_subroutine_0 [label="START", shape="rectangle", style="rounded"];
-		loop_subroutine_2 [label="i := 0\n", shape="rectangle", style="rounded"];
-		loop_subroutine_3 [label="n := 63\n", shape="rectangle", style="rounded"];
-		loop_subroutine_4 [label="one := 1\n", shape="rectangle", style="rounded"];
-		loop_subroutine_5 [label="two := 2\n", shape="rectangle", style="rounded"];
-		loop_subroutine_6 [label="ans := 0\n", shape="rectangle", style="rounded"];
-		loop_subroutine_7 [label="to_add := 1\n", shape="rectangle", style="rounded"];
-		loop_subroutine_8 [label="cond := i <= n\n", shape="rectangle", style="rounded"];
+		loop_subroutine_2 [label="i := 0", shape="rectangle", style="rounded"];
+		loop_subroutine_3 [label="n := 63", shape="rectangle", style="rounded"];
+		loop_subroutine_4 [label="one := 1", shape="rectangle", style="rounded"];
+		loop_subroutine_5 [label="two := 2", shape="rectangle", style="rounded"];
+		loop_subroutine_6 [label="ans := 0", shape="rectangle", style="rounded"];
+		loop_subroutine_7 [label="to_add := 1", shape="rectangle", style="rounded"];
+		loop_subroutine_8 [label="cond := i <= n", shape="rectangle", style="rounded"];
 		loop_subroutine_9 [label="if cond", shape="rectangle", style="rounded"];
-		loop_subroutine_10 [label="mod2a := mod2(a)\n", shape="rectangle", style="rounded"];
-		loop_subroutine_11 [label="mod2b := mod2(b)\n", shape="rectangle", style="rounded"];
-		loop_subroutine_12 [label="cond_add := mod2a && mod2b\n", shape="rectangle", style="rounded"];
+		loop_subroutine_10 [label="mod2a := mod2(a)", shape="rectangle", style="rounded"];
+		loop_subroutine_11 [label="mod2b := mod2(b)", shape="rectangle", style="rounded"];
+		loop_subroutine_12 [label="cond_add := mod2a && mod2b", shape="rectangle", style="rounded"];
 		loop_subroutine_13 [label="if c", shape="rectangle", style="rounded"];
-		loop_subroutine_14 [label="cond_add := mod2a || mod2b\n", shape="rectangle", style="rounded"];
+		loop_subroutine_14 [label="cond_add := mod2a || mod2b", shape="rectangle", style="rounded"];
 		loop_subroutine_15 [label="if cond_add", shape="rectangle", style="rounded"];
-		loop_subroutine_16 [label="ans := ans + to_add\n", shape="rectangle", style="rounded"];
-		loop_subroutine_17 [label="a := a / two\n", shape="rectangle", style="rounded"];
-		loop_subroutine_18 [label="b := b / two\n", shape="rectangle", style="rounded"];
-		loop_subroutine_19 [label="to_add := to_add * two\n", shape="rectangle", style="rounded"];
-		loop_subroutine_20 [label="i := i + one\n", shape="rectangle", style="rounded"];
+		loop_subroutine_16 [label="ans := ans + to_add", shape="rectangle", style="rounded"];
+		loop_subroutine_17 [label="a := a / two", shape="rectangle", style="rounded"];
+		loop_subroutine_18 [label="b := b / two", shape="rectangle", style="rounded"];
+		loop_subroutine_19 [label="to_add := to_add * two", shape="rectangle", style="rounded"];
+		loop_subroutine_20 [label="i := i + one", shape="rectangle", style="rounded"];
 		loop_subroutine_22 [label="return ans", shape="rectangle", style="rounded"];
 
 		loop_subroutine_0 -> loop_subroutine_2;
@@ -72,8 +72,8 @@ digraph {
 		label="OR(a: int, b: int)";
 		rankdir="TB";
 		OR_0 [label="START", shape="rectangle", style="rounded"];
-		OR_2 [label="oper := true\n", shape="rectangle", style="rounded"];
-		OR_3 [label="v1 := loop_subroutine(a, b, oper)\n", shape="rectangle", style="rounded"];
+		OR_2 [label="oper := true", shape="rectangle", style="rounded"];
+		OR_3 [label="v1 := loop_subroutine(a, b, oper)", shape="rectangle", style="rounded"];
 		OR_4 [label="return v1", shape="rectangle", style="rounded"];
 
 		OR_0 -> OR_2;
@@ -84,8 +84,8 @@ digraph {
 		label="AND(a: int, b: int)";
 		rankdir="TB";
 		AND_0 [label="START", shape="rectangle", style="rounded"];
-		AND_2 [label="oper := false\n", shape="rectangle", style="rounded"];
-		AND_3 [label="v1 := loop_subroutine(a, b, oper)\n", shape="rectangle", style="rounded"];
+		AND_2 [label="oper := false", shape="rectangle", style="rounded"];
+		AND_3 [label="v1 := loop_subroutine(a, b, oper)", shape="rectangle", style="rounded"];
 		AND_4 [label="return v1", shape="rectangle", style="rounded"];
 
 		AND_0 -> AND_2;
@@ -96,9 +96,9 @@ digraph {
 		label="XOR(a: int, b: int)";
 		rankdir="TB";
 		XOR_0 [label="START", shape="rectangle", style="rounded"];
-		XOR_2 [label="and_val := AND(a, b)\n", shape="rectangle", style="rounded"];
-		XOR_3 [label="or_val := OR(a, b)\n", shape="rectangle", style="rounded"];
-		XOR_4 [label="ans := or_val - and_val\n", shape="rectangle", style="rounded"];
+		XOR_2 [label="and_val := AND(a, b)", shape="rectangle", style="rounded"];
+		XOR_3 [label="or_val := OR(a, b)", shape="rectangle", style="rounded"];
+		XOR_4 [label="ans := or_val - and_val", shape="rectangle", style="rounded"];
 		XOR_5 [label="return ans", shape="rectangle", style="rounded"];
 
 		XOR_0 -> XOR_2;
@@ -110,19 +110,19 @@ digraph {
 		label="main(a: int, b: int, c: int)";
 		rankdir="TB";
 		main_0 [label="START", shape="rectangle", style="rounded"];
-		main_2 [label="one := 1\n", shape="rectangle", style="rounded"];
-		main_3 [label="zero := 0\n", shape="rectangle", style="rounded"];
-		main_4 [label="sel := c - one\n", shape="rectangle", style="rounded"];
-		main_5 [label="ans := zero\n", shape="rectangle", style="rounded"];
-		main_6 [label="less := sel < zero\n", shape="rectangle", style="rounded"];
-		main_7 [label="equal := sel == zero\n", shape="rectangle", style="rounded"];
-		main_8 [label="greater := sel > zero\n", shape="rectangle", style="rounded"];
+		main_2 [label="one := 1", shape="rectangle", style="rounded"];
+		main_3 [label="zero := 0", shape="rectangle", style="rounded"];
+		main_4 [label="sel := c - one", shape="rectangle", style="rounded"];
+		main_5 [label="ans := zero", shape="rectangle", style="rounded"];
+		main_6 [label="less := sel < zero", shape="rectangle", style="rounded"];
+		main_7 [label="equal := sel == zero", shape="rectangle", style="rounded"];
+		main_8 [label="greater := sel > zero", shape="rectangle", style="rounded"];
 		main_9 [label="if less", shape="rectangle", style="rounded"];
 		main_10 [label="if equal", shape="rectangle", style="rounded"];
-		main_11 [label="ans := AND(a, b)\n", shape="rectangle", style="rounded"];
-		main_13 [label="ans := OR(a, b)\n", shape="rectangle", style="rounded"];
-		main_15 [label="ans := XOR(a, b)\n", shape="rectangle", style="rounded"];
-		main_16 [label="print ans\n", shape="rectangle", style="rounded"];
+		main_11 [label="ans := AND(a, b)", shape="rectangle", style="rounded"];
+		main_13 [label="ans := OR(a, b)", shape="rectangle", style="rounded"];
+		main_15 [label="ans := XOR(a, b)", shape="rectangle", style="rounded"];
+		main_16 [label="print ans", shape="rectangle", style="rounded"];
 
 		main_0 -> main_2;
 		main_2 -> main_3;

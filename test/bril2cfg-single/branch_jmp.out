@@ -3,11 +3,11 @@ digraph {
 		label="main()";
 		rankdir="TB";
 		main_0 [label="START", shape="rectangle", style="rounded"];
-		main_2 [label="foo := 10\n", shape="rectangle", style="rounded"];
-		main_3 [label="bar := 20\n", shape="rectangle", style="rounded"];
-		main_4 [label="b := foo == bar\n", shape="rectangle", style="rounded"];
+		main_2 [label="foo := 10", shape="rectangle", style="rounded"];
+		main_3 [label="bar := 20", shape="rectangle", style="rounded"];
+		main_4 [label="b := foo == bar", shape="rectangle", style="rounded"];
 		main_5 [label="if b", shape="rectangle", style="rounded"];
-		main_9 [label="print b\n", shape="rectangle", style="rounded"];
+		main_9 [label="print b", shape="rectangle", style="rounded"];
 
 		main_0 -> main_2;
 		main_2 -> main_3;
