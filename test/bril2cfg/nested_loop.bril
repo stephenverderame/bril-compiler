@@ -1,0 +1,31 @@
+@main(a: int) {
+    i: int = const 0;
+    run_nest: bool = const false;
+.top_head:
+    b: bool = lt i a;
+    br b .top_body .top_end;
+.top_body:
+    br run_nest .left .right;
+.left:
+    j: int = const 0;
+.nest_head:
+    b2: bool = lt j a;
+    br b2 .nest_body .nest_end;
+.nest_body:
+    one: int = const 1;
+    j_inc: int = add j one;
+    prod: int = mul i j_inc;
+    print prod;
+    j: int = add j one;
+    jmp .nest_head;
+.right:
+    zero: int = const 0;
+    print zero;
+.nest_end:
+    run_nest: bool = not run_nest;
+    one: int = const 1;
+    i: int = add i one;
+    jmp .top_head;
+.top_end:
+
+}

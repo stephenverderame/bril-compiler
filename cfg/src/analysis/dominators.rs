@@ -139,11 +139,11 @@ impl DomTree {
         block == dom
             || self
                 .nodes
-                .get(&block)
+                .get(&dom)
                 .unwrap()
                 .dominated
                 .iter()
-                .any(|&d| self.nodes[&d].is_dominator(&self.nodes, block))
+                .any(|d| self.nodes[d].is_dominator(&self.nodes, block))
     }
 
     /// Computes the dominance frontier of a block

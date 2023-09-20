@@ -2,6 +2,7 @@
 use atty::Stream;
 use bril_rs::{load_program, load_program_from_read, Program};
 use cfg::analysis::dominators::compute_dominators;
+use cfg::analysis::loops::{find_natural_loops, NaturalLoop};
 use cfg::analysis::{Dir, Fact};
 use cfg::{
     analysis::analyze, analysis::live_vars::LiveVars, analysis::Backwards, Cfg,
@@ -32,6 +33,10 @@ struct CLIArgs {
     /// Specify this flag to display a dom tree instead of a CFG
     #[arg(long, default_value_t = false)]
     dom: bool,
+
+    /// Specify this flag to display loops in the CFG
+    #[arg(long, default_value_t = false)]
+    loops: bool,
 }
 
 /// # bril2cfg
@@ -98,6 +103,7 @@ fn print_dot(cfg: &Cfg, fn_name: &str, fn_args: &str, args: &CLIArgs) {
             );
         }
     }
+    display_clusters(cfg, args, fn_name);
     println!();
     if args.dom {
         display_dom(cfg, fn_name);
@@ -134,6 +140,49 @@ fn display_cfg(cfg: &Cfg, fn_name: &str) {
             }
             CfgEdgeTo::Terminal => {}
         }
+    }
+}
+
+/// Prints the given natural loop and all nested loops
+/// # Arguments
+/// * `lp` - The natural loop to print
+/// * `nest_lvl` - The nesting level of the loop (0 for top level loops)
+/// * `fn_name` - The name of the function the loop is in
+fn display_loop(lp: &NaturalLoop, nest_lvl: usize, fn_name: &str) {
+    let subgraph_indent =
+        (0..nest_lvl + 2).fold(String::new(), |a, _| a + "\t");
+    let body_indent = (0..nest_lvl + 3).fold(String::new(), |a, _| a + "\t");
+    let color = match nest_lvl % 3 {
+        0 => "blue",
+        1 => "green",
+        2 => "red",
+        _ => unreachable!(),
+    };
+    println!(
+        "{subgraph_indent}subgraph cluster_{fn_name}_loop{} {{",
+        lp.header
+    );
+    println!("{body_indent}label=\"\";");
+    println!("{body_indent}color=\"{color}\";");
+    println!("{body_indent}style=\"rounded\";");
+    println!("{body_indent}bgcolor=\"#FFFFFF00\";");
+    for node in &lp.nodes {
+        println!("{body_indent}{fn_name}_{node};");
+    }
+    for child in &lp.nested {
+        display_loop(child, nest_lvl + 1, fn_name);
+    }
+    println!("{subgraph_indent}}}");
+}
+
+fn display_clusters(cfg: &Cfg, args: &CLIArgs, fn_name: &str) {
+    if !args.loops {
+        return;
+    }
+    let domtree = compute_dominators(cfg);
+    let loops = find_natural_loops(cfg, &domtree);
+    for lp in loops {
+        display_loop(&lp, 0, fn_name);
     }
 }
 

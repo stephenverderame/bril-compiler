@@ -12,7 +12,7 @@
             "args": [
                 "-f",
                 "${workspaceFolder}/debug.json",
-                "--dom",
+                "--loops",
             ],
             "cwd": "${workspaceFolder}"
         }

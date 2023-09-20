@@ -1,0 +1,41 @@
+digraph {
+	subgraph cluster_main {
+		label="main()";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="v0 := 23789216\nx := v0\nv1 := 1748698766\ny := v1\nv2 := x\nv3 := y\nf := gcd(v2, v3)\nf := f\nv4 := f\nprint v4\nv5 := 0", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+	}
+	subgraph cluster_mod {
+		label="mod(r: int, s: int)";
+		rankdir="TB";
+		mod_0 [label="START", shape="rectangle", style="rounded"];
+		mod_2 [label="v0 := r\nv1 := r\nv2 := s\nv3 := v1 / v2\nv4 := s\nv5 := v3 * v4\nv6 := v0 - v5\nresult := v6\nv7 := result\nreturn v7", shape="rectangle", style="rounded"];
+
+		mod_0 -> mod_2;
+	}
+	subgraph cluster_gcd {
+		label="gcd(a: int, b: int)";
+		rankdir="TB";
+		gcd_0 [label="START", shape="rectangle", style="rounded"];
+		gcd_2 [label="v0 := 0\nzero := v0\nv1 := b\nv2 := zero\nv3 := v1 == v2\ncond_temp := v3\nv4 := !cond_temp\ncond := v4", shape="rectangle", style="rounded"];
+		gcd_3 [label="v6 := cond\nif v6", shape="rectangle", style="rounded"];
+		gcd_4 [label="v7 := b\ntemp := v7\nv8 := a\nv9 := b\nv10 := mod(v8, v9)\nb := v10\nv11 := temp\na := v11\nv12 := b\nv13 := zero\nv14 := v12 == v13\ncond_temp := v14\nv15 := !cond_temp\ncond := v15", shape="rectangle", style="rounded"];
+		gcd_5 [label="v16 := a\nreturn v16", shape="rectangle", style="rounded"];
+		subgraph cluster_gcd_loop3 {
+			label="";
+			color="blue";
+			style="rounded";
+			bgcolor="#FFFFFF00";
+			gcd_3;
+			gcd_4;
+		}
+
+		gcd_0 -> gcd_2;
+		gcd_2 -> gcd_3;
+		gcd_3 -> gcd_4 [label="T"];
+		gcd_3 -> gcd_5 [label="F"];
+		gcd_4 -> gcd_3;
+	}
+}

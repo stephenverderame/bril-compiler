@@ -1,0 +1,16 @@
+digraph {
+	subgraph cluster_main {
+		label="main()";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		subgraph cluster_main_loop0 {
+			label="";
+			color="blue";
+			style="rounded";
+			bgcolor="#FFFFFF00";
+			main_0;
+		}
+
+		main_0 -> main_0;
+	}
+}

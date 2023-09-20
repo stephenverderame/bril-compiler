@@ -5,6 +5,7 @@ use bril_rs::Instruction;
 use std::collections::HashMap;
 pub mod dominators;
 pub mod live_vars;
+pub mod loops;
 
 /// A fact in the analysis
 pub trait Fact: PartialEq + Clone {

@@ -1,0 +1,92 @@
+digraph {
+	subgraph cluster_main {
+		label="main()";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="v12 := 1\nspace := v12\nv13 := 8\nvalue := v13\nv14 := 0\nv15 := 1\nv16 := v14 - v15\nneg_1 := v16\nv17 := 0\nv18 := 2\nv19 := v17 - v18\nneg_2 := v19\nv21 := 1\nj := v21", shape="rectangle", style="rounded"];
+		main_3 [label="v22 := j\nv23 := neg_1\nv24 := v22 >= v23\nif v24", shape="rectangle", style="rounded"];
+		main_4 [label="v25 := 0\nnum := v25\nv26 := 0\ncnt := v26\nv28 := neg_2\ni := v28", shape="rectangle", style="rounded"];
+		main_5 [label="v29 := i\nv30 := 0.5\nv31 := v29 <= v30\nif v31", shape="rectangle", style="rounded"];
+		main_6 [label="v32 := i\nv33 := j\nv34 := 0\nv35 := 0\nv36 := 0\nx := f(v32, v33, v34, v35, v36)\nx := x\nv38 := x\nv39 := 50\nv40 := v38 < v39\nif v40", shape="rectangle", style="rounded"];
+		main_7 [label="v41 := space\nv42 := cnt\nv := pow10(v41, v42)\nv := v\nv43 := num\nv44 := v\nv45 := v43 + v44\nnum := v45", shape="rectangle", style="rounded"];
+		main_8 [label="v46 := value\nv47 := cnt\nv := pow10(v46, v47)\nv := v\nv48 := num\nv49 := v\nv50 := v48 + v49\nnum := v50", shape="rectangle", style="rounded"];
+		main_9 [label="v51 := cnt\nv52 := 1\nv53 := v51 + v52\ncnt := v53\nv54 := i\nv55 := 0.225\nv56 := v54 + v55\ni := v56", shape="rectangle", style="rounded"];
+		main_10 [label="v57 := num\nprint v57\nv58 := 0\nv59 := j\nv60 := 0.015\nv61 := v59 - v60\nj := v61", shape="rectangle", style="rounded"];
+		subgraph cluster_main_loop3 {
+			label="";
+			color="blue";
+			style="rounded";
+			bgcolor="#FFFFFF00";
+			main_9;
+			main_7;
+			main_3;
+			main_8;
+			main_4;
+			main_10;
+			main_6;
+			main_5;
+			subgraph cluster_main_loop5 {
+				label="";
+				color="green";
+				style="rounded";
+				bgcolor="#FFFFFF00";
+				main_9;
+				main_6;
+				main_7;
+				main_8;
+				main_5;
+			}
+		}
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4 [label="T"];
+		main_4 -> main_5;
+		main_5 -> main_6 [label="T"];
+		main_5 -> main_10 [label="F"];
+		main_6 -> main_7 [label="T"];
+		main_6 -> main_8 [label="F"];
+		main_7 -> main_9;
+		main_8 -> main_9;
+		main_9 -> main_5;
+		main_10 -> main_3;
+	}
+	subgraph cluster_f {
+		label="f(X: float, Y: float, x: float, y: float, n: int)";
+		rankdir="TB";
+		f_0 [label="START", shape="rectangle", style="rounded"];
+		f_2 [label="v0 := x\nv1 := x\nv2 := v0 * v1\nv3 := y\nv4 := y\nv5 := v3 * v4\nv6 := v2 + v5\nr := v6\nv8 := r\nv9 := 4\nv10 := v8 < v9\nif v10", shape="rectangle", style="rounded"];
+		f_3 [label="v12 := n\nv13 := 100\nv14 := v12 < v13\nif v14", shape="rectangle", style="rounded"];
+		f_4 [label="v15 := x\nv16 := x\nv17 := v15 * v16\nv18 := y\nv19 := y\nv20 := v18 * v19\nv21 := v17 - v20\nv22 := X\nv23 := v21 + v22\nx2 := v23\nv24 := 2\nv25 := x\nv26 := v24 * v25\nv27 := y\nv28 := v26 * v27\nv29 := Y\nv30 := v28 + v29\ny2 := v30\nv31 := 1\nv32 := X\nv33 := Y\nv34 := x2\nv35 := y2\nv36 := n\nv37 := 1\nv38 := v36 + v37\nv39 := f(v32, v33, v34, v35, v38)\nv40 := v31 + v39\nfv := v40\nv41 := fv\nreturn v41", shape="rectangle", style="rounded"];
+		f_7 [label="v42 := 0\nreturn v42", shape="rectangle", style="rounded"];
+
+		f_0 -> f_2;
+		f_2 -> f_3 [label="T"];
+		f_2 -> f_7 [label="F"];
+		f_3 -> f_4 [label="T"];
+		f_3 -> f_7 [label="F"];
+	}
+	subgraph cluster_pow10 {
+		label="pow10(n: int, e: int)";
+		rankdir="TB";
+		pow10_0 [label="START", shape="rectangle", style="rounded"];
+		pow10_2 [label="v1 := e\ni := v1", shape="rectangle", style="rounded"];
+		pow10_3 [label="v2 := i\nv3 := 0\nv4 := v2 > v3\nif v4", shape="rectangle", style="rounded"];
+		pow10_4 [label="v5 := n\nv6 := 10\nv7 := v5 * v6\nn := v7\nv8 := i\nv9 := 1\nv10 := v8 - v9\ni := v10", shape="rectangle", style="rounded"];
+		pow10_5 [label="v11 := n\nreturn v11", shape="rectangle", style="rounded"];
+		subgraph cluster_pow10_loop3 {
+			label="";
+			color="blue";
+			style="rounded";
+			bgcolor="#FFFFFF00";
+			pow10_3;
+			pow10_4;
+		}
+
+		pow10_0 -> pow10_2;
+		pow10_2 -> pow10_3;
+		pow10_3 -> pow10_4 [label="T"];
+		pow10_3 -> pow10_5 [label="F"];
+		pow10_4 -> pow10_3;
+	}
+}
