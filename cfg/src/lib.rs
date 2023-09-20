@@ -61,12 +61,50 @@ pub enum CfgEdgeTo {
     Terminal,
 }
 
+impl CfgEdgeTo {
+    /// Returns the nodes that this edge points to
+    #[must_use]
+    pub fn nodes(&self) -> Vec<usize> {
+        match self {
+            Self::Next(n) => vec![*n],
+            Self::Branch {
+                true_node: t,
+                false_node: f,
+            } => vec![*t, *f],
+            Self::Terminal => vec![],
+        }
+    }
+}
+
 /// The control flow graph of a function
 #[derive(Clone, Debug)]
 pub struct Cfg {
     pub blocks: BTreeMap<usize, CfgNode>,
     pub adj_lst: HashMap<usize, CfgEdgeTo>,
     pub labels: HashMap<usize, Vec<String>>,
+}
+
+impl Cfg {
+    /// Returns a map from block id to the block's predecessors.
+    pub fn preds(&self) -> HashMap<usize, Vec<usize>> {
+        let mut preds = HashMap::new();
+        for (id, edge_to) in &self.adj_lst {
+            match edge_to {
+                CfgEdgeTo::Branch {
+                    true_node,
+                    false_node,
+                } => {
+                    preds.entry(*true_node).or_insert_with(Vec::new).push(*id);
+                    preds.entry(*false_node).or_insert_with(Vec::new).push(*id);
+                }
+                CfgEdgeTo::Next(next_node) => {
+                    preds.entry(*next_node).or_insert_with(Vec::new).push(*id);
+                }
+                CfgEdgeTo::Terminal => {}
+            }
+        }
+        preds
+    }
 }
 
 /// Returns true if the instruction is a terminator instruction
@@ -95,7 +133,7 @@ impl CfgNode {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         let empty = String::new();
-        let arg_0 = args.get(0).unwrap();
+        let arg_0 = args.get(0).unwrap_or(&empty);
         let arg_1 = args.get(1).unwrap_or(&empty);
         let func_0 = funcs.get(0).unwrap_or(&empty);
         match op {

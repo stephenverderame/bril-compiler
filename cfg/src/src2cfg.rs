@@ -1,6 +1,15 @@
 use std::collections::HashSet;
 
 use super::*;
+fn is_nop(instr: &Instruction) -> bool {
+    matches!(
+        instr,
+        Instruction::Effect {
+            op: EffectOps::Nop,
+            ..
+        }
+    )
+}
 impl Cfg {
     /// Finishes the current block and adds it to the CFG
     /// # Arguments
@@ -70,7 +79,7 @@ impl Cfg {
                         );
                         active_block = BasicBlock::default();
                         active_labels = Vec::new();
-                    } else {
+                    } else if !is_nop(instr) {
                         active_block.instrs.push(instr.clone());
                         if single_mode {
                             // instruction-level CFG, so make every instruction

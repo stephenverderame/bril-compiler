@@ -11,7 +11,8 @@ Each of these tools is developed unix style and communicates via the shell.
 * `bril-rs` - Simple rust library for interfacing with Bril. Most of it
 is taken from Patrick LaFontaine from [https://github.com/sampsyo/bril](https://github.com/sampsyo/bril)
 * `cfg` - Library for constructing CFGs and performing data flow analyses.
-* `bril2cfg` - Converts bril to dot graphs
+* `bril2cfg` - Converts bril to dot graphs. Can convert to CFG graphs, display data flow
+analyses, and display the dominator tree.
 * `test` - Test directory for [TURNT](https://github.com/cucapra/turnt) snapshot tests.
 Most tests come from [https://github.com/sampsyo/bril](https://github.com/sampsyo/bril) benchmarks.
 * `dummy-pass` - Simply converts a bril program into a CFG and back into a bril program.

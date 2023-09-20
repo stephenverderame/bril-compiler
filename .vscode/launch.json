@@ -12,8 +12,7 @@
             "args": [
                 "-f",
                 "${workspaceFolder}/debug.json",
-                "--df",
-                "live_vars",
+                "--dom",
             ],
             "cwd": "${workspaceFolder}"
         }

@@ -4,27 +4,6 @@ use std::collections::{HashSet, VecDeque};
 /// The base name (non-unique) of a block label.
 const BLOCK_LABEL_BASE: &str = "block.";
 
-/// Returns a map from block id to the block's predecessors.
-fn cfg_preds(cfg: &Cfg) -> HashMap<usize, Vec<usize>> {
-    let mut preds = HashMap::new();
-    for (id, edge_to) in &cfg.adj_lst {
-        match edge_to {
-            CfgEdgeTo::Branch {
-                true_node,
-                false_node,
-            } => {
-                preds.entry(*true_node).or_insert_with(Vec::new).push(*id);
-                preds.entry(*false_node).or_insert_with(Vec::new).push(*id);
-            }
-            CfgEdgeTo::Next(next_node) => {
-                preds.entry(*next_node).or_insert_with(Vec::new).push(*id);
-            }
-            CfgEdgeTo::Terminal => {}
-        }
-    }
-    preds
-}
-
 /// Returns true if current block needs a label.
 fn need_label(
     cfg: &Cfg,
@@ -200,8 +179,8 @@ pub fn to_src(cfg: &Cfg) -> Vec<Code> {
     let mut src = Vec::new();
     let mut visited = HashSet::new();
     visited.insert(CFG_START_ID);
-    let mut order = order_blocks(cfg, &cfg_preds(cfg));
-    let preds = cfg_preds(cfg);
+    let preds = cfg.preds();
+    let mut order = order_blocks(cfg, &preds);
     let mut last_block_id = CFG_START_ID;
     while let Some(id) = order.pop_front() {
         assert!(!visited.contains(&id));

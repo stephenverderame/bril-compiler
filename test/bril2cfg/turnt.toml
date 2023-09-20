@@ -7,3 +7,10 @@ output.cfg = "-"
 command = "bril2json < {filename} | cargo run --bin bril2cfg -- --df live_vars"
 return_code = 0
 output.livevars = "-"
+
+[envs.domtree]
+command = "bril2json < {filename} | cargo run --bin bril2cfg -- --dom"
+return_code = 0
+# Converting to a domtree is non-deterministic, so we just check that it
+# doesn't panic (which will happen if the dom tree is incorrect due to testing)
+output.domtree = "2"

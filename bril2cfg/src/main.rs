@@ -1,6 +1,7 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 use atty::Stream;
 use bril_rs::{load_program, load_program_from_read, Program};
+use cfg::analysis::dominators::compute_dominators;
 use cfg::analysis::{Dir, Fact};
 use cfg::{
     analysis::analyze, analysis::live_vars::LiveVars, analysis::Backwards, Cfg,
@@ -27,6 +28,10 @@ struct CLIArgs {
     /// Options: "live_vars"
     #[arg(long)]
     df: Option<String>,
+
+    /// Specify this flag to display a dom tree instead of a CFG
+    #[arg(long, default_value_t = false)]
+    dom: bool,
 }
 
 /// # bril2cfg
@@ -44,11 +49,12 @@ struct CLIArgs {
 fn main() {
     let args = CLIArgs::parse();
     if args.file.is_some() {
-        let prog =
-            load_program_from_read(File::open(args.file.unwrap()).unwrap());
-        print_prog(prog, args.single, &args.df);
+        let prog = load_program_from_read(
+            File::open(args.file.as_ref().unwrap()).unwrap(),
+        );
+        print_prog(prog, &args);
     } else if !atty::is(Stream::Stdin) {
-        print_prog(load_program(), args.single, &args.df);
+        print_prog(load_program(), &args);
     } else {
         eprintln!("Either specify a file or pipe in a bril program.");
         eprintln!("See `bril2cfg --help` for more information.");
@@ -56,10 +62,10 @@ fn main() {
 }
 
 /// Print the dot file for the given program.
-fn print_prog(prog: Program, single: bool, df: &Option<String>) {
+fn print_prog(prog: Program, args: &CLIArgs) {
     println!("digraph {{");
     for f in prog.functions {
-        let cfg = Cfg::from(&f, single);
+        let cfg = Cfg::from(&f, args.single);
         let mut args_name = "(".to_owned();
         for (idx, a) in f.args.iter().enumerate() {
             args_name.push_str(&format!("{}: {}", a.name, a.arg_type));
@@ -68,7 +74,7 @@ fn print_prog(prog: Program, single: bool, df: &Option<String>) {
             }
         }
         args_name.push(')');
-        print_dot(&cfg, &f.name, &args_name, df);
+        print_dot(&cfg, &f.name, &args_name, args);
     }
     println!("}}");
 }
@@ -78,21 +84,31 @@ fn print_prog(prog: Program, single: bool, df: &Option<String>) {
 ///
 /// We print each function as a clustered subgraph
 /// of a digraph
-fn print_dot(cfg: &Cfg, name: &str, args: &str, df: &Option<String>) {
-    let df_res_str = display_facts(df, cfg);
-    println!("\tsubgraph cluster_{name} {{");
-    println!("\t\tlabel=\"{name}{args}\";");
+fn print_dot(cfg: &Cfg, fn_name: &str, fn_args: &str, args: &CLIArgs) {
+    let df_res_str = display_facts(&args.df, cfg);
+    println!("\tsubgraph cluster_{fn_name} {{");
+    println!("\t\tlabel=\"{fn_name}{fn_args}\";");
     println!("\t\trankdir=\"TB\";");
     let empty = (String::new(), String::new());
     for (i, node) in &cfg.blocks {
         if *i != CFG_END_ID {
             let (header, footer) = df_res_str.get(i).unwrap_or(&empty);
             println!(
-                "\t\t{name}_{i} [label=\"{header}{node}{footer}\", shape=\"rectangle\", style=\"rounded\"];"
+                "\t\t{fn_name}_{i} [label=\"{header}{node}{footer}\", shape=\"rectangle\", style=\"rounded\"];"
             );
         }
     }
     println!();
+    if args.dom {
+        display_dom(cfg, fn_name);
+    } else {
+        display_cfg(cfg, fn_name);
+    }
+    println!("\t}}");
+}
+
+/// Prints the edges of the CFG
+fn display_cfg(cfg: &Cfg, fn_name: &str) {
     for i in cfg.blocks.keys() {
         let next = cfg.adj_lst.get(i).unwrap();
         match next {
@@ -102,24 +118,36 @@ fn print_dot(cfg: &Cfg, name: &str, args: &str, df: &Option<String>) {
             } => {
                 if *true_node != CFG_END_ID {
                     println!(
-                        "\t\t{name}_{i} -> {name}_{true_node} [label=\"T\"];"
+                        "\t\t{fn_name}_{i} -> {fn_name}_{true_node} [label=\"T\"];"
                     );
                 }
                 if *false_node != CFG_END_ID {
                     println!(
-                        "\t\t{name}_{i} -> {name}_{false_node} [label=\"F\"];"
+                        "\t\t{fn_name}_{i} -> {fn_name}_{false_node} [label=\"F\"];"
                     );
                 }
             }
             CfgEdgeTo::Next(next_node) => {
                 if *next_node != CFG_END_ID {
-                    println!("\t\t{name}_{i} -> {name}_{next_node};");
+                    println!("\t\t{fn_name}_{i} -> {fn_name}_{next_node};");
                 }
             }
             CfgEdgeTo::Terminal => {}
         }
     }
-    println!("\t}}");
+}
+
+/// Prints the edges of the dominator tree
+fn display_dom(cfg: &Cfg, fn_name: &str) {
+    println!("\t\t{fn_name}_{CFG_END_ID} [label=\"END\", shape=\"rectangle\", style=\"rounded\"];");
+    let dom = compute_dominators(cfg);
+    for n in cfg.blocks.keys() {
+        let dominated = dom.immediately_dominated(*n);
+        for d in dominated {
+            println!("\t\t{fn_name}_{n} -> {fn_name}_{d} [style=\"dashed\"];");
+        }
+    }
+    dom.check_dom_tree(cfg);
 }
 
 /// Performs an analysis on a cfg and returns a mapping from block ids to

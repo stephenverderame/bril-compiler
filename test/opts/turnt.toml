@@ -20,3 +20,10 @@ return_code = 0
 [envs.dce]
 command = "bril2json < {filename} | cargo run --bin dce | brili {args}"
 return_code = 0
+
+[envs.domtree]
+command = "bril2json < {filename} | cargo run --bin bril2cfg -- --dom"
+return_code = 0
+# Converting to a domtree is non-deterministic, so we just check that it
+# doesn't panic (which will happen if the dom tree is incorrect due to testing)
+output.domtree = "2"
