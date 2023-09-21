@@ -12,8 +12,8 @@ digraph {
 			color="blue";
 			style="rounded";
 			bgcolor="#FFFFFF00";
-			sumOfSquares_4;
 			sumOfSquares_3;
+			sumOfSquares_4;
 		}
 
 		sumOfSquares_0 -> sumOfSquares_2;

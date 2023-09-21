@@ -1,0 +1,29 @@
+digraph {
+	subgraph cluster_main {
+		label="main()";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="[]\n----------\nv0 := 100\ncnt := v0\nv2 := 0\ni := v2\n----------\n[cnt, i]", shape="rectangle", style="rounded"];
+		main_3 [label="[cnt, i]\n----------\nv3 := i\nv4 := cnt\nv5 := v3 < v4\nif v5\n----------\n[cnt, i]", shape="rectangle", style="rounded"];
+		main_4 [label="[cnt, i]\n----------\nv6 := i\nv7 := 2\nv8 := v6 * v7\nouter := v8\nv10 := 0\nj := v10\n----------\n[cnt, i, j, outer]", shape="rectangle", style="rounded"];
+		main_5 [label="[cnt, i, j, outer]\n----------\nv11 := j\nv12 := cnt\nv13 := v11 < v12\nif v13\n----------\n[cnt, i, j, outer]", shape="rectangle", style="rounded"];
+		main_6 [label="[cnt, i, j, outer]\n----------\nv14 := outer\nv15 := 10\nv16 := v14 + v15\ninner := v16\nv18 := 0\nk := v18\n----------\n[cnt, i, inner, j, k, outer]", shape="rectangle", style="rounded"];
+		main_7 [label="[cnt, i, inner, j, k, outer]\n----------\nv19 := k\nv20 := cnt\nv21 := v19 < v20\nif v21\n----------\n[cnt, i, inner, j, k, outer]", shape="rectangle", style="rounded"];
+		main_8 [label="[cnt, i, inner, j, k, outer]\n----------\nv22 := inner\nv23 := outer\nv24 := v22 * v23\ninner_inner := v24\nv25 := inner_inner\nprint v25\nv26 := 0\nv27 := i\nprint v27\nv28 := 0\nv29 := j\nprint v29\nv30 := 0\nv31 := k\nprint v31\nv32 := 0\nv33 := k\nv34 := 1\nv35 := v33 + v34\nk := v35\n----------\n[cnt, i, inner, j, k, outer]", shape="rectangle", style="rounded"];
+		main_9 [label="[cnt, i, j, outer]\n----------\nv36 := j\nv37 := 1\nv38 := v36 + v37\nj := v38\n----------\n[cnt, i, j, outer]", shape="rectangle", style="rounded"];
+		main_10 [label="[cnt, i]\n----------\nv39 := i\nv40 := 1\nv41 := v39 + v40\ni := v41\n----------\n[cnt, i]", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4 [label="T"];
+		main_4 -> main_5;
+		main_5 -> main_6 [label="T"];
+		main_5 -> main_10 [label="F"];
+		main_6 -> main_7;
+		main_7 -> main_8 [label="T"];
+		main_7 -> main_9 [label="F"];
+		main_8 -> main_7;
+		main_9 -> main_5;
+		main_10 -> main_3;
+	}
+}

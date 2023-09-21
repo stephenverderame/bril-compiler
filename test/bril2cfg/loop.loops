@@ -11,8 +11,8 @@ digraph {
 			color="blue";
 			style="rounded";
 			bgcolor="#FFFFFF00";
-			main_4;
 			main_3;
+			main_4;
 		}
 
 		main_0 -> main_2;

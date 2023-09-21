@@ -4,6 +4,7 @@ use super::{dominators::DomTree, Cfg};
 use std::collections::HashSet;
 
 /// A natural loop in the CFG
+#[derive(Clone, Debug)]
 pub struct NaturalLoop {
     /// the header of the loop
     pub header: usize,

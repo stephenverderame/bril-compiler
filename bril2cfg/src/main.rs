@@ -9,7 +9,7 @@ use cfg::{
     CfgEdgeTo, CFG_END_ID,
 };
 use clap::Parser;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::fs::File;
 
 #[derive(Parser, Debug)]
@@ -166,11 +166,16 @@ fn display_loop(lp: &NaturalLoop, nest_lvl: usize, fn_name: &str) {
     println!("{body_indent}color=\"{color}\";");
     println!("{body_indent}style=\"rounded\";");
     println!("{body_indent}bgcolor=\"#FFFFFF00\";");
-    for node in &lp.nodes {
+    // sort for deterministic output
+    let nodes: BTreeSet<_> = lp.nodes.iter().collect();
+    for node in nodes {
         println!("{body_indent}{fn_name}_{node};");
     }
-    for child in &lp.nested {
-        display_loop(child, nest_lvl + 1, fn_name);
+    // sort for deterministic output
+    let mut nested = lp.nested.clone();
+    nested.sort_by(|a, b| a.header.cmp(&b.header));
+    for child in nested {
+        display_loop(&child, nest_lvl + 1, fn_name);
     }
     println!("{subgraph_indent}}}");
 }
@@ -180,7 +185,8 @@ fn display_clusters(cfg: &Cfg, args: &CLIArgs, fn_name: &str) {
         return;
     }
     let domtree = compute_dominators(cfg);
-    let loops = find_natural_loops(cfg, &domtree);
+    let mut loops = find_natural_loops(cfg, &domtree);
+    loops.sort_by(|a, b| a.header.cmp(&b.header));
     for lp in loops {
         display_loop(&lp, 0, fn_name);
     }
@@ -192,7 +198,8 @@ fn display_dom(cfg: &Cfg, fn_name: &str) {
     let dom = compute_dominators(cfg);
     for n in cfg.blocks.keys() {
         let dominated = dom.immediately_dominated(*n);
-        for d in dominated {
+        let sorted_dominated: BTreeSet<_> = dominated.iter().collect();
+        for d in sorted_dominated {
             println!("\t\t{fn_name}_{n} -> {fn_name}_{d} [style=\"dashed\"];");
         }
     }

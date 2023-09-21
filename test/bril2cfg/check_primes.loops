@@ -14,11 +14,11 @@ digraph {
 			color="blue";
 			style="rounded";
 			bgcolor="#FFFFFF00";
-			main_7;
+			main_3;
 			main_4;
 			main_5;
-			main_3;
 			main_6;
+			main_7;
 		}
 
 		main_0 -> main_2;

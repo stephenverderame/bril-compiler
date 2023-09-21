@@ -17,24 +17,24 @@ digraph {
 			color="blue";
 			style="rounded";
 			bgcolor="#FFFFFF00";
-			main_9;
-			main_7;
 			main_3;
-			main_8;
 			main_4;
-			main_10;
-			main_6;
 			main_5;
+			main_6;
+			main_7;
+			main_8;
+			main_9;
+			main_10;
 			subgraph cluster_main_loop5 {
 				label="";
 				color="green";
 				style="rounded";
 				bgcolor="#FFFFFF00";
-				main_9;
+				main_5;
 				main_6;
 				main_7;
 				main_8;
-				main_5;
+				main_9;
 			}
 		}
 

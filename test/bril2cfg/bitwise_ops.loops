@@ -24,12 +24,12 @@ digraph {
 			color="blue";
 			style="rounded";
 			bgcolor="#FFFFFF00";
-			loop_subroutine_7;
 			loop_subroutine_3;
-			loop_subroutine_8;
-			loop_subroutine_6;
 			loop_subroutine_4;
 			loop_subroutine_5;
+			loop_subroutine_6;
+			loop_subroutine_7;
+			loop_subroutine_8;
 		}
 
 		loop_subroutine_0 -> loop_subroutine_2;
