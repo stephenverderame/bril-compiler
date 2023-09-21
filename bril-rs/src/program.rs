@@ -265,6 +265,31 @@ impl Instruction {
         }
     }
 
+    /// A helper function to set the destination variable if it exists from an instruction
+    pub fn set_dest(&mut self, dest: String) {
+        match self {
+            Self::Constant { dest: d, .. } | Self::Value { dest: d, .. } => {
+                *d = dest;
+            }
+            Self::Effect { .. } => {}
+        }
+    }
+
+    /// A helper function to replace the old argument variable with a new one
+    /// if it exists
+    pub fn replace_args(&mut self, old: &str, new: &str) {
+        match self {
+            Self::Constant { .. } => {}
+            Self::Value { args, .. } | Self::Effect { args, .. } => {
+                for arg in args {
+                    if arg == old {
+                        *arg = new.to_string();
+                    }
+                }
+            }
+        }
+    }
+
     /// A helper function to extract the arguments if they exist from an instruction
     #[must_use]
     pub fn get_args(&self) -> Option<&[String]> {
@@ -274,9 +299,11 @@ impl Instruction {
         }
     }
 
-    /// A helper function to determine if the instruction is pure (no side effects)
+    /// A helper function to determine if the instruction is generally pure
+    /// A division instruction is generally pure, for example but can have side
+    /// effects (divide by zero)
     #[must_use]
-    pub const fn is_pure(&self) -> bool {
+    pub const fn is_semi_pure(&self) -> bool {
         !matches!(
             self,
             Self::Effect { .. }
@@ -288,6 +315,19 @@ impl Instruction {
                     ..
                 }
         )
+    }
+
+    /// A helper function to determine if the instruction is pure
+    #[must_use]
+    pub const fn is_pure(&self) -> bool {
+        self.is_semi_pure()
+            && !matches!(
+                self,
+                Self::Value {
+                    op: ValueOps::Div,
+                    ..
+                }
+            )
     }
 
     /// A helper function to extract the type if it exists from an instruction

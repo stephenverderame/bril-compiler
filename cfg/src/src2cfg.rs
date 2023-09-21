@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use super::*;
-fn is_nop(instr: &Instruction) -> bool {
+/// Returns true if `instr` is a nop
+const fn is_nop(instr: &Instruction) -> bool {
     matches!(
         instr,
         Instruction::Effect {

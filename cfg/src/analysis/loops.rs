@@ -10,7 +10,7 @@ pub struct NaturalLoop {
     pub header: usize,
     /// set of all nodes in the loop
     pub nodes: HashSet<usize>,
-    /// set of all nodes in the loop that have successors outside the loop
+    /// set of all nodes outside the loop that have predecessors in the loop
     pub exits: Vec<usize>,
     /// list of all nested loops
     pub nested: Vec<NaturalLoop>,
@@ -44,19 +44,11 @@ impl NaturalLoop {
         nodes.remove(&CFG_END_ID);
         let mut exits = Vec::new();
         for node in &nodes {
-            if cfg.adj_lst[node].nodes().iter().any(|n| !nodes.contains(n))
-                || matches!(
-                    cfg.blocks[node],
-                    crate::CfgNode::Block(crate::BasicBlock {
-                        terminator: Some(bril_rs::Instruction::Effect {
-                            op: bril_rs::EffectOps::Return,
-                            ..
-                        }),
-                        ..
-                    })
-                )
-            {
-                exits.push(*node);
+            for next in cfg.adj_lst[node].nodes() {
+                if !nodes.contains(&next) {
+                    exits.push(next);
+                    break;
+                }
             }
             if *node != header
                 && !transposed

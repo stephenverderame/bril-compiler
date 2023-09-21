@@ -1,0 +1,20 @@
+# ARGS: 10
+@main(a: int) {
+    i: int = const 0;
+.loop_head:
+    ten: int = const 10;
+    h: int = mul i ten;
+    ten: int = add a ten;
+    b: bool = lt i ten;
+    br b .loop_body .loop_end;
+.loop_body:
+    f: int = mul a ten;
+    g: int = mul f i;
+    one: int = const 1;
+    i: int = add i one;
+    print g;
+    jmp .loop_head;
+.loop_end:
+    print h;
+
+}

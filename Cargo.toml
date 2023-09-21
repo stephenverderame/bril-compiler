@@ -9,4 +9,5 @@ members = [
     "common-cli",
     "lvn",
     "dce",
+    "licm",
 ]

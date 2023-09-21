@@ -14,7 +14,7 @@ fn dce(mut cfg: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
     let mut changed = true;
     while changed {
         changed = false;
-        let analysis_res = analyze::<LiveVars, Backwards>(&cfg);
+        let analysis_res = analyze::<LiveVars, Backwards>(&cfg, None, None);
         for block in
             &mut cfg.blocks.iter_mut().filter_map(|(_, node)| match node {
                 CfgNode::Block(block) => Some(block),
@@ -36,7 +36,7 @@ fn block_dce(
     let mut can_remove = vec![];
     for instr in block.instrs.iter() {
         if let Some(dest) = instr.get_dest() {
-            if instr.is_pure()
+            if instr.is_semi_pure()
                 && !analysis_res
                     .in_facts
                     .get(&(instr as *const Instruction))

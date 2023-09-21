@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct LiveVars {
-    vars: HashSet<String>,
+    pub vars: HashSet<String>,
 }
 
 impl LiveVars {
@@ -29,7 +29,7 @@ impl Fact for LiveVars {
         Self { vars }
     }
 
-    fn transfer(&self, instr: &Instruction) -> Vec<Self>
+    fn transfer(&self, instr: &Instruction, _: usize) -> Vec<Self>
     where
         Self: std::marker::Sized,
     {

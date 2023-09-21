@@ -6,6 +6,8 @@ use std::collections::HashMap;
 pub mod dominators;
 pub mod live_vars;
 pub mod loops;
+pub mod moveable_instrs;
+pub mod reaching_defs;
 
 /// A fact in the analysis
 pub trait Fact: PartialEq + Clone {
@@ -18,7 +20,7 @@ pub trait Fact: PartialEq + Clone {
 
     /// Returns the output fact of the transfer function for
     /// the given instruction
-    fn transfer(&self, instr: &Instruction) -> Vec<Self>
+    fn transfer(&self, instr: &Instruction, block_id: usize) -> Vec<Self>
     where
         Self: std::marker::Sized;
 }
@@ -112,13 +114,13 @@ impl<'a, T> Refy<'a, T> {
 /// * Tuple of input facts for each instruction and the output fact for the block
 fn analyze_basic_block<T: Fact, D: Direction>(
     cfg: &Cfg,
-    block: usize,
+    block_id: usize,
     mut res_in_facts: HashMap<*const Instruction, T>,
     in_fact: &T,
 ) -> (HashMap<*const Instruction, T>, Vec<T>) {
     let mut fact = Refy::Ref(in_fact);
     let mut block_out = vec![];
-    if let CfgNode::Block(block) = &cfg.blocks.get(&block).unwrap() {
+    if let CfgNode::Block(block) = &cfg.blocks.get(&block_id).unwrap() {
         D::local_iter(
             &mut block.instrs.iter().chain(block.terminator.as_ref()),
             &mut |instr| {
@@ -126,7 +128,7 @@ fn analyze_basic_block<T: Fact, D: Direction>(
                     instr as *const Instruction,
                     fact.borrow(&block_out).clone(),
                 );
-                block_out = fact.borrow(&block_out).transfer(instr);
+                block_out = fact.borrow(&block_out).transfer(instr, block_id);
                 assert!(!block_out.is_empty());
                 fact = Refy::Idx(0);
             },
@@ -175,23 +177,34 @@ fn broadcast_out_facts<T: Fact>(
 /// Performs an analysis pass on the CFG
 /// # Arguments
 /// * `cfg` - The CFG
+/// * `restricted_set` - The set of blocks to analyze or None to analyze all blocks
+/// * `top` - The top element of the lattice or `None` to use `T::top()`
 /// # Returns
 /// * The input and output facts for each instruction
 /// # Panics
 ///
 #[must_use]
-pub fn analyze<T: Fact, D: Direction>(cfg: &Cfg) -> AnalysisResult<T> {
+pub fn analyze<T: Fact, D: Direction>(
+    cfg: &Cfg,
+    restricted_set: Option<&[usize]>,
+    top: Option<T>,
+) -> AnalysisResult<T> {
     use std::collections::hash_map::Entry;
     let mut in_facts: HashMap<usize, T> = HashMap::new();
     let mut out_facts: HashMap<usize, Vec<T>> = HashMap::new();
     let mut res_in_facts: HashMap<*const Instruction, T> = HashMap::new();
     let mut worklist: Vec<usize> = Vec::new();
     let adj_lst = D::get_adj_list(cfg);
-    let top = T::top();
+    let top = top.unwrap_or_else(T::top);
     in_facts.extend(cfg.blocks.keys().map(|k| (*k, top.clone())));
     worklist.extend(cfg.blocks.keys());
 
     while let Some(block) = worklist.pop() {
+        if let Some(restricted_set) = restricted_set {
+            if !restricted_set.contains(&block) {
+                continue;
+            }
+        }
         let in_fact = in_facts.get(&block).unwrap();
         let out_fact;
         (res_in_facts, out_fact) =
