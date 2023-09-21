@@ -65,8 +65,8 @@ impl Fact for ReachingDefs {
     {
         let (instr_id, instr) = instr;
         let mut res = self.clone();
-        if let Instruction::Value { dest, .. } = instr {
-            if let Some(existing_defs) = res.defs.get(dest) {
+        if let Some(dest) = instr.get_dest() {
+            if let Some(existing_defs) = res.defs.get(&dest) {
                 res.instrs.retain(|ptr, _| !existing_defs.contains(ptr));
             }
             let mut hs = HashSet::new();

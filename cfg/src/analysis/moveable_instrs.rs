@@ -12,41 +12,13 @@ use super::{
     AnalysisResult, Fact,
 };
 
-/// An ordered instruction is an instruction with an order
-/// that keeps track of the order in which it was marked as
-/// loop invariant
-///
-/// Lower orders are more recent (later)
-// #[derive(Clone, Debug)]
-// struct OrderedInstruction {
-//     instr: Instruction,
-//     id: *const Instruction,
-//     order: i64,
-// }
-// impl PartialOrd for OrderedInstruction {
-//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-//         Some(self.order.cmp(&other.order))
-//     }
-// }
-// impl Ord for OrderedInstruction {
-//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-//         self.order.cmp(&other.order)
-//     }
-// }
-
-// impl PartialEq for OrderedInstruction {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.id == other.id
-//     }
-// }
-
-// impl Eq for OrderedInstruction {}
-
 /// Set of variables which are not loop invariant
 #[derive(Clone)]
 pub struct MoveableInstrs {
     not_invariant: HashSet<u64>,
+    not_inv_vars: HashSet<String>,
     reaching_defs: Rc<AnalysisResult<ReachingDefs>>,
+    f_args: Rc<Vec<String>>,
     lp: Rc<NaturalLoop>,
     /// The set of variables that are live out of the loop
     live_exit_vars: Rc<HashSet<String>>,
@@ -65,6 +37,7 @@ impl MoveableInstrs {
         reaching_defs: Rc<AnalysisResult<ReachingDefs>>,
         lp: Rc<NaturalLoop>,
         live_vars: &AnalysisResult<LiveVars>,
+        f_args: Rc<Vec<String>>,
     ) -> Self {
         let mut live_exit_vars = HashSet::new();
         for n in &lp.exits {
@@ -74,9 +47,11 @@ impl MoveableInstrs {
         }
         Self {
             not_invariant: HashSet::new(),
+            not_inv_vars: HashSet::new(),
             reaching_defs,
             lp,
             live_exit_vars: Rc::new(live_exit_vars),
+            f_args,
         }
     }
 
@@ -93,11 +68,14 @@ impl Fact for MoveableInstrs {
 
     fn meet(&self, b: &Self) -> Self {
         let not_inv = self.not_invariant.union(&b.not_invariant);
+        let not_inv_vars = self.not_inv_vars.union(&b.not_inv_vars);
         Self {
             not_invariant: not_inv.copied().collect(),
+            not_inv_vars: not_inv_vars.map(String::to_string).collect(),
             reaching_defs: self.reaching_defs.clone(),
             lp: self.lp.clone(),
             live_exit_vars: self.live_exit_vars.clone(),
+            f_args: self.f_args.clone(),
         }
     }
 
@@ -107,13 +85,26 @@ impl Fact for MoveableInstrs {
     {
         let (instr_id, instr) = instr;
         let mut not_inv = self.not_invariant.clone();
+        let mut not_inv_vars = self.not_inv_vars.clone();
+        if let Some(dest) = instr.get_dest() {
+            if self.live_exit_vars.contains(&dest)
+                || self.not_inv_vars.contains(&dest)
+            {
+                // variable is live-in to an exit node
+                not_inv.insert(*instr_id);
+            }
+        }
         if let Some(args) = instr.get_args() {
             for arg in args {
+                // max definitions of an argument
+                // 0 if the argument is a function argument (bc we imagine function
+                // arguments to be defined at the beginning of the function), so
+                // if there is 1 other definition, that would be two separate blocks
+                let arg_max_defs = usize::from(!self.f_args.contains(arg));
                 if self.reaching_defs.in_facts[instr_id]
                     .instrs_defining(arg)
                     .iter()
                     .any(|instr| self.not_invariant.contains(instr))
-                    || self.live_exit_vars.contains(arg)
                     || self.reaching_defs.in_facts[instr_id]
                         .blocks_defining(arg)
                         .iter()
@@ -121,20 +112,23 @@ impl Fact for MoveableInstrs {
                         && self.reaching_defs.in_facts[instr_id]
                             .blocks_defining(arg)
                             .len()
-                            > 1
+                            > arg_max_defs
+                    || self.not_inv_vars.contains(arg)
                 {
                     // argument uses a varying instruction OR
-                    // argument is live-in to a loop exit node OR
                     // argument is defined in the loop and has more than one definition
                     not_inv.insert(*instr_id);
+                    instr.get_dest().map(|d| not_inv_vars.insert(d));
                 }
             }
         }
         vec![Self {
             not_invariant: not_inv,
+            not_inv_vars,
             reaching_defs: self.reaching_defs.clone(),
             lp: self.lp.clone(),
             live_exit_vars: self.live_exit_vars.clone(),
+            f_args: self.f_args.clone(),
         }]
     }
 }

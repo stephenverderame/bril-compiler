@@ -23,14 +23,13 @@ struct ExtraArgs {}
 
 /// Invokes global dead code elimination on the cfg
 #[compiler_pass(true)]
-fn licm(mut cfg: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
-    let reaching_defs = analyze::<ReachingDefs, Forwards>(&cfg, None, None);
-    let live_vars = analyze::<LiveVars, Backwards>(&cfg, None, None);
+fn licm(mut cfg: Cfg, _args: &CLIArgs, f: &bril_rs::Function) -> Cfg {
     let domtree = dominators::compute_dominators(&cfg);
     let loops = loops::find_natural_loops(&cfg, &domtree);
-    let reaching_defs = Rc::new(reaching_defs);
+    let args =
+        Rc::new(f.args.iter().map(|a| a.name.clone()).collect::<Vec<_>>());
     for lp in loops {
-        cfg = licm_loop(cfg, Rc::new(lp), &live_vars, reaching_defs.clone());
+        cfg = licm_loop(cfg, Rc::new(lp), args.clone());
     }
     cfg
 }
@@ -46,23 +45,25 @@ fn licm(mut cfg: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
 fn licm_loop(
     mut cfg: Cfg,
     lp: Rc<NaturalLoop>,
-    live_vars: &AnalysisResult<LiveVars>,
-    reaching_defs: Rc<AnalysisResult<ReachingDefs>>,
+    f_args: Rc<Vec<String>>,
 ) -> Cfg {
     #![allow(clippy::manual_retain)]
+    // reanalyze bc the CFG is changing
+    let reaching_defs =
+        Rc::new(analyze::<ReachingDefs, Forwards>(&cfg, None, None));
+    let live_vars = analyze::<LiveVars, Backwards>(&cfg, None, None);
     let moveable_instrs = loop_invariant_instrs(
         &cfg,
         reaching_defs.clone(),
         lp.clone(),
-        live_vars,
+        &live_vars,
+        f_args.clone(),
     );
     let moveable_instrs =
         hoist_and_rewrite(moveable_instrs, &mut cfg, &reaching_defs, &lp);
     let _ = insert_preheader(&mut cfg, lp.header, moveable_instrs.clone(), &lp);
     for n in &lp.nodes {
         if let Some(CfgNode::Block(block)) = &mut cfg.blocks.get_mut(n) {
-            // use addresses as keys, so can't delete elements in the original instr vector
-            // (therefore, we cannot use retain)
             block.instrs = block
                 .instrs
                 .iter()
@@ -72,12 +73,7 @@ fn licm_loop(
         }
     }
     for nest in &lp.nested {
-        cfg = licm_loop(
-            cfg,
-            Rc::new(nest.clone()),
-            live_vars,
-            reaching_defs.clone(),
-        );
+        cfg = licm_loop(cfg, Rc::new(nest.clone()), f_args.clone());
     }
     cfg
 }
@@ -176,17 +172,17 @@ fn rewrite_cfg(
     reaching_defs: &AnalysisResult<ReachingDefs>,
     lp: &NaturalLoop,
 ) {
-    for n in &lp.nodes {
-        for (_, blk) in cfg.blocks.iter_mut().filter(|(&id, _)| id == *n) {
-            if let CfgNode::Block(blk) = blk {
-                for (instr_id, instr) in
-                    blk.instrs.iter_mut().chain(blk.terminator.as_mut())
-                {
-                    if reaching_defs.in_facts[instr_id]
-                        .reached_by(changing_instr)
-                    {
-                        instr.replace_args(old_use, new_use);
-                    }
+    for (_, blk) in cfg
+        .blocks
+        .iter_mut()
+        .filter(|(id, _)| lp.nodes.contains(id))
+    {
+        if let CfgNode::Block(blk) = blk {
+            for (instr_id, instr) in
+                blk.instrs.iter_mut().chain(blk.terminator.as_mut())
+            {
+                if reaching_defs.in_facts[instr_id].reached_by(changing_instr) {
+                    instr.replace_args(old_use, new_use);
                 }
             }
         }
@@ -246,91 +242,23 @@ fn insert_preheader(
     preheader_id
 }
 
-/// Returns the set of instructions that are loop invariant
-/// These instructions are pure instructions with arguments
-/// that are only defined outside the loop or only defined
-/// by a single loop invariant instruction
-// fn loop_invariant_instrs(
-//     cfg: &Cfg,
-//     reaching_defs: &AnalysisResult<ReachingDefs>,
-//     lp: &NaturalLoop,
-// ) -> BinaryHeap<OrderedInstruction> {
-//     let mut res: BinaryHeap<OrderedInstruction> = BinaryHeap::new();
-//     let mut li_instrs = HashSet::new();
-//     let mut invariant_defs = HashSet::new();
-//     let mut changed = true;
-//     let mut undos = HashSet::new();
-//     let mut order = 0;
-//     while changed {
-//         changed = false;
-//         for block in lp.nodes.iter() {
-//             if let CfgNode::Block(block) = &cfg.blocks[block] {
-//                 for instr in block.instrs.iter() {
-//                     if instr.is_pure() {
-//                         let mut is_invariant = true;
-//                         for arg in instr.get_args().unwrap_or_default() {
-//                             if reaching_defs.in_facts[&(instr as *const _)]
-//                                 .blocks_defining(arg)
-//                                 .iter()
-//                                 .any(|n| {
-//                                     !invariant_defs.contains(arg)
-//                                         && lp.nodes.contains(n)
-//                                 })
-//                             {
-//                                 is_invariant = false;
-//                                 break;
-//                             }
-//                         }
-//                         if is_invariant {
-//                             if !li_instrs.contains(&(instr as *const _)) {
-//                                 res.retain(|i| i.id != instr as *const _);
-//                                 res.push(OrderedInstruction {
-//                                     id: instr as *const _,
-//                                     instr: instr.clone(),
-//                                     // negate the order, for max heap
-//                                     // the order keeps track of when (relative to orher instructions)
-//                                     // the instruction was marked as loop invariant
-//                                     order: -order,
-//                                 });
-//                                 order += 1;
-//                                 li_instrs.insert(instr as *const _);
-
-//                                 invariant_defs.extend(instr.get_dest());
-//                                 changed = true;
-//                             }
-//                         } else if let Some(dest) = instr.get_dest() {
-//                             // if the instruction is not invariant, but it's destination was
-//                             // previously marked as invariant, we need to undo that
-//                             if invariant_defs.contains(&dest) {
-//                                 undos.insert(dest.clone());
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     res.retain(|instr| {
-//         if let Some(dest) = instr.instr.get_dest() {
-//             !undos.contains(&dest)
-//         } else {
-//             true
-//         }
-//     });
-//     res
-// }
-
 fn loop_invariant_instrs(
     cfg: &Cfg,
     reaching_defs: Rc<AnalysisResult<ReachingDefs>>,
     lp: Rc<NaturalLoop>,
     live_vars: &AnalysisResult<LiveVars>,
+    f_args: Rc<Vec<String>>,
 ) -> Vec<(u64, Instruction)> {
     let nodes = Rc::new(lp.nodes.iter().copied().collect::<Vec<usize>>());
     let loop_inv = analyze::<MoveableInstrs, Forwards>(
         cfg,
         Some(&nodes),
-        Some(MoveableInstrs::new(reaching_defs, lp.clone(), live_vars)),
+        Some(MoveableInstrs::new(
+            reaching_defs,
+            lp.clone(),
+            live_vars,
+            f_args,
+        )),
     );
     get_loop_invariant_instrs(cfg, &nodes, lp.header, &loop_inv)
 }

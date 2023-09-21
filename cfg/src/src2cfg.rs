@@ -38,6 +38,62 @@ impl Cfg {
         next_id + 1
     }
 
+    /// Adds an instruction to the current block
+    /// If the instruction is a terminator, or `single_mode` is enabled,
+    /// then the current block is finished and added to the CFG
+    /// # Arguments
+    /// * `instr` - The instruction
+    /// * `id` - The next id to use for a block
+    /// * `active_block` - The current block
+    /// * `active_labels` - The labels for the current block
+    /// * `single_mode` - If true, then a basic block is a single instruction
+    /// * `blocks` - The map from node id to instruction
+    /// * `labels` - The map from label to node id
+    /// # Returns
+    /// * The next id to use for a block
+    /// * The current block
+    /// * The labels for the current blocks
+    fn add_instr_to_block(
+        instr: (usize, &Instruction),
+        mut id: usize,
+        mut active_block: BasicBlock,
+        mut active_labels: Vec<String>,
+        single_mode: bool,
+        blocks: &mut BTreeMap<usize, CfgNode>,
+        labels: &mut HashMap<String, usize>,
+    ) -> (usize, BasicBlock, Vec<String>) {
+        let (instr_id, instr) = instr;
+        if is_terminator(instr) {
+            id = Self::add_block(
+                active_block,
+                Some((instr_id as u64, instr.clone())),
+                active_labels,
+                id,
+                blocks,
+                labels,
+            );
+            active_block = BasicBlock::default();
+            active_labels = Vec::new();
+        } else if !is_nop(instr) {
+            active_block.instrs.push((instr_id as u64, instr.clone()));
+            if single_mode {
+                // instruction-level CFG, so make every instruction
+                // its own block
+                id = Self::add_block(
+                    active_block,
+                    None,
+                    active_labels,
+                    id,
+                    blocks,
+                    labels,
+                );
+                active_block = BasicBlock::default();
+                active_labels = Vec::new();
+            }
+        }
+        (id, active_block, active_labels)
+    }
+
     /// Loops through all instructions, creating basic blocks and
     /// adding them to the CFG. Returns the last basic block,
     /// labels that are still active, and the next id to use for a block
@@ -69,36 +125,16 @@ impl Cfg {
                     active_labels.push(label.clone());
                 }
                 Code::Instruction(instr) => {
-                    if is_terminator(instr) {
-                        id = Self::add_block(
-                            active_block,
-                            Some((instr_id as u64, instr.clone())),
-                            active_labels,
+                    (id, active_block, active_labels) =
+                        Self::add_instr_to_block(
+                            (instr_id, instr),
                             id,
+                            active_block,
+                            active_labels,
+                            single_mode,
                             blocks,
                             labels,
                         );
-                        active_block = BasicBlock::default();
-                        active_labels = Vec::new();
-                    } else if !is_nop(instr) {
-                        active_block
-                            .instrs
-                            .push((instr_id as u64, instr.clone()));
-                        if single_mode {
-                            // instruction-level CFG, so make every instruction
-                            // its own block
-                            id = Self::add_block(
-                                active_block,
-                                None,
-                                active_labels,
-                                id,
-                                blocks,
-                                labels,
-                            );
-                            active_block = BasicBlock::default();
-                            active_labels = Vec::new();
-                        }
-                    }
                 }
             }
         }

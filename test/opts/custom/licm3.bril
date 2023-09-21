@@ -1,0 +1,25 @@
+# ARGS: 10
+@main(a: int) {
+    i: int = const 0;
+.loop.head:
+    b: bool = lt i a;
+    br b .loop.body .loop.end;
+.loop.body:
+    five: int = const 5;
+    b: bool = lt i five;
+    br b .loop.body.left .loop.body.right;
+.loop.body.left:
+    a: int = const 10;
+    b: int = add a a;
+    jmp .loop.body.tail;
+.loop.body.right:
+    a: int = const 20;
+    b: int = add a a;
+.loop.body.tail:
+    print b;
+    one: int = const 1;
+    i: int = add i one;
+    jmp .loop.head;
+.loop.end:
+
+}

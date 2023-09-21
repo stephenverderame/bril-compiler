@@ -21,6 +21,10 @@ return_code = 0
 command = "bril2json < {filename} | cargo run --bin dce | brili {args}"
 return_code = 0
 
+[envs.licm]
+command = "bril2json < {filename} | cargo run --bin licm | brili {args}"
+return_code = 0
+
 [envs.domtree]
 command = "bril2json < {filename} | cargo run --bin bril2cfg -- --dom"
 return_code = 0

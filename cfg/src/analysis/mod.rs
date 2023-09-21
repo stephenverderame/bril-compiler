@@ -201,6 +201,10 @@ pub fn analyze<T: Fact, D: Direction>(
     let top = top.unwrap_or_else(T::top);
     in_facts.extend(cfg.blocks.keys().map(|k| (*k, top.clone())));
     worklist.extend(cfg.blocks.keys());
+    in_facts.insert(CFG_START_ID, top.clone());
+    out_facts.insert(CFG_START_ID, vec![top.clone()]);
+    in_facts.insert(CFG_END_ID, top.clone());
+    out_facts.insert(CFG_END_ID, vec![top.clone()]);
 
     while let Some(block) = worklist.pop() {
         if let Some(restricted_set) = restricted_set {

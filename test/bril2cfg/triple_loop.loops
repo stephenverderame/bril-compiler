@@ -35,14 +35,14 @@ digraph {
 				main_7;
 				main_8;
 				main_9;
-				subgraph cluster_main_loop7 {
-					label="";
-					color="red";
-					style="rounded";
-					bgcolor="#FFFFFF00";
-					main_7;
-					main_8;
-				}
+			}
+			subgraph cluster_main_loop7 {
+				label="";
+				color="green";
+				style="rounded";
+				bgcolor="#FFFFFF00";
+				main_7;
+				main_8;
 			}
 		}
 
