@@ -58,15 +58,7 @@ fn licm_loop(
     );
     let moveable_instrs =
         hoist_and_rewrite(moveable_instrs, &mut cfg, &reaching_defs, &lp);
-    let _ = insert_preheader(
-        &mut cfg,
-        lp.header,
-        moveable_instrs
-            .iter()
-            .map(|instr| instr.1.clone())
-            .collect(),
-        &lp,
-    );
+    let _ = insert_preheader(&mut cfg, lp.header, moveable_instrs.clone(), &lp);
     for n in &lp.nodes {
         if let Some(CfgNode::Block(block)) = &mut cfg.blocks.get_mut(n) {
             // use addresses as keys, so can't delete elements in the original instr vector
@@ -74,11 +66,7 @@ fn licm_loop(
             block.instrs = block
                 .instrs
                 .iter()
-                .filter(|i| {
-                    !moveable_instrs
-                        .iter()
-                        .any(|instr| instr.0 == *i as *const _)
-                })
+                .filter(|i| !moveable_instrs.iter().any(|instr| instr.0 == i.0))
                 .cloned()
                 .collect();
         }
@@ -135,11 +123,11 @@ fn generate_fresh_var(
 /// Rewrites all usages of the given moveable instructions to use different
 /// variable names which prevent errors due to moving the instructions
 fn hoist_and_rewrite(
-    mut moveable_instrs: Vec<(*const Instruction, Instruction)>,
+    mut moveable_instrs: Vec<(u64, Instruction)>,
     cfg: &mut Cfg,
     reaching_defs: &AnalysisResult<ReachingDefs>,
     lp: &NaturalLoop,
-) -> Vec<(*const Instruction, Instruction)> {
+) -> Vec<(u64, Instruction)> {
     let mut updated_vars = HashMap::new();
     let mut used_vars = used_variables(reaching_defs, lp, cfg);
     for i in 0..moveable_instrs.len() {
@@ -184,17 +172,17 @@ fn rewrite_cfg(
     cfg: &mut Cfg,
     old_use: &str,
     new_use: &str,
-    changing_instr: *const Instruction,
+    changing_instr: u64,
     reaching_defs: &AnalysisResult<ReachingDefs>,
     lp: &NaturalLoop,
 ) {
     for n in &lp.nodes {
         for (_, blk) in cfg.blocks.iter_mut().filter(|(&id, _)| id == *n) {
             if let CfgNode::Block(blk) = blk {
-                for instr in
+                for (instr_id, instr) in
                     blk.instrs.iter_mut().chain(blk.terminator.as_mut())
                 {
-                    if reaching_defs.in_facts[&(instr as *const _)]
+                    if reaching_defs.in_facts[instr_id]
                         .reached_by(changing_instr)
                     {
                         instr.replace_args(old_use, new_use);
@@ -221,7 +209,7 @@ fn next_block_id(cfg: &Cfg) -> usize {
 fn insert_preheader(
     cfg: &mut Cfg,
     header: usize,
-    instrs: Vec<Instruction>,
+    instrs: Vec<(u64, Instruction)>,
     lp: &NaturalLoop,
 ) -> usize {
     let preheader_id = next_block_id(cfg);
@@ -337,7 +325,7 @@ fn loop_invariant_instrs(
     reaching_defs: Rc<AnalysisResult<ReachingDefs>>,
     lp: Rc<NaturalLoop>,
     live_vars: &AnalysisResult<LiveVars>,
-) -> Vec<(*const Instruction, Instruction)> {
+) -> Vec<(u64, Instruction)> {
     let nodes = Rc::new(lp.nodes.iter().copied().collect::<Vec<usize>>());
     let loop_inv = analyze::<MoveableInstrs, Forwards>(
         cfg,

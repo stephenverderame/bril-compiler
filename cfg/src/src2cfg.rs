@@ -24,7 +24,7 @@ impl Cfg {
     /// * The next id to use for a block
     fn add_block(
         mut active_block: BasicBlock,
-        terminator: Option<Instruction>,
+        terminator: Option<(u64, Instruction)>,
         active_labels: Vec<String>,
         next_id: usize,
         blocks: &mut BTreeMap<usize, CfgNode>,
@@ -51,7 +51,7 @@ impl Cfg {
         let mut active_block = BasicBlock::default();
         // the labels we encounter before the next instruction
         let mut active_labels = Vec::new();
-        for code in &f.instrs {
+        for (instr_id, code) in f.instrs.iter().enumerate() {
             match code {
                 Code::Label { label, .. } => {
                     if !active_block.is_empty() {
@@ -72,7 +72,7 @@ impl Cfg {
                     if is_terminator(instr) {
                         id = Self::add_block(
                             active_block,
-                            Some(instr.clone()),
+                            Some((instr_id as u64, instr.clone())),
                             active_labels,
                             id,
                             blocks,
@@ -81,7 +81,9 @@ impl Cfg {
                         active_block = BasicBlock::default();
                         active_labels = Vec::new();
                     } else if !is_nop(instr) {
-                        active_block.instrs.push(instr.clone());
+                        active_block
+                            .instrs
+                            .push((instr_id as u64, instr.clone()));
                         if single_mode {
                             // instruction-level CFG, so make every instruction
                             // its own block
@@ -142,7 +144,11 @@ impl Cfg {
                 &mut labels,
             );
         }
-        Self::gen_cfg_from_lbls_and_blocks(labels, blocks)
+        Self::gen_cfg_from_lbls_and_blocks(
+            labels,
+            blocks,
+            f.instrs.len() as u64,
+        )
     }
 
     /// Generate a CFG from a map from label to node id and a map from node id to instruction
@@ -155,6 +161,7 @@ impl Cfg {
     fn gen_cfg_from_lbls_and_blocks(
         labels_map: HashMap<String, usize>,
         blocks: BTreeMap<usize, CfgNode>,
+        last_instr_id: u64,
     ) -> Self {
         // cfg adjacency list
         let mut adj_lst = HashMap::new();
@@ -170,7 +177,7 @@ impl Cfg {
         }) {
             if instr.is_none()
                 || !Self::handle_effects(
-                    instr.as_ref().unwrap(),
+                    &instr.as_ref().unwrap().1,
                     *id,
                     &labels_map,
                     &mut adj_lst,
@@ -186,7 +193,12 @@ impl Cfg {
         if let Some(last_id) = last_id {
             adj_lst.insert(last_id, CfgEdgeTo::Next(CFG_END_ID));
         }
-        Self::splice_out_goto_and_make_self(adj_lst, blocks, labels_map)
+        Self::splice_out_goto_and_make_self(
+            adj_lst,
+            blocks,
+            labels_map,
+            last_instr_id,
+        )
     }
 
     /// Splice out blocks containing only jumps from the `adj_list`,
@@ -197,11 +209,13 @@ impl Cfg {
         adj_lst: HashMap<usize, CfgEdgeTo>,
         blocks: BTreeMap<usize, CfgNode>,
         labels_map: HashMap<String, usize>,
+        last_instr_id: u64,
     ) -> Self {
         Self {
             blocks,
             adj_lst,
             labels: Self::construct_labels_map(labels_map),
+            last_instr_id,
         }
         .clean()
     }
@@ -242,10 +256,13 @@ impl Cfg {
             Some(CfgNode::Block(BasicBlock {
                 terminator:
                     None
-                    | Some(Instruction::Effect {
-                        op: EffectOps::Jump,
-                        ..
-                    }),
+                    | Some((
+                        _,
+                        Instruction::Effect {
+                            op: EffectOps::Jump,
+                            ..
+                        },
+                    )),
                 instrs,
                 ..
             })) if instrs.is_empty() => {

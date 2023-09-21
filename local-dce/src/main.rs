@@ -46,18 +46,22 @@ fn block_dce(block: &mut BasicBlock) {
         block.terminator.is_none()
             || matches!(
                 block.terminator,
-                Some(Instruction::Effect {
-                    op: EffectOps::Jump | EffectOps::Branch | EffectOps::Return,
-                    ..
-                })
+                Some((
+                    _,
+                    Instruction::Effect {
+                        op: EffectOps::Jump
+                            | EffectOps::Branch
+                            | EffectOps::Return,
+                        ..
+                    }
+                ))
             )
     );
     loop {
         let mut can_remove = vec![];
         // need to use pointer equality since there could be duplicate instructions
-        let mut potentially_unused: HashMap<&String, *const Instruction> =
-            HashMap::new();
-        for instr in block.instrs.iter() {
+        let mut potentially_unused: HashMap<&String, u64> = HashMap::new();
+        for (instr_id, instr) in block.instrs.iter() {
             if let Some(args) = instr_args(instr) {
                 potentially_unused.retain(|k, _| !args.contains(*k));
             }
@@ -65,13 +69,13 @@ fn block_dce(block: &mut BasicBlock) {
                 if let Some(instr) = potentially_unused.get(dest) {
                     can_remove.push(*instr);
                 }
-                potentially_unused.insert(dest, instr);
+                potentially_unused.insert(dest, *instr_id);
             }
         }
         let old_size = block.instrs.len();
         block
             .instrs
-            .retain(|instr| !can_remove.contains(&(instr as *const _)));
+            .retain(|(instr_id, _)| !can_remove.contains(instr_id));
         if block.instrs.len() == old_size || old_size == 0 {
             break;
         }

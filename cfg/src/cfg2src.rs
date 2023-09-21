@@ -33,12 +33,15 @@ fn fix_branch_jumps(
     block: &BasicBlock,
     mut src: Vec<Code>,
 ) -> Vec<Code> {
-    if let Instruction::Effect {
-        args: terminator_args,
-        funcs: terminator_funcs,
-        pos: terminator_pos,
-        ..
-    } = block.terminator.as_ref().unwrap()
+    if let (
+        _,
+        Instruction::Effect {
+            args: terminator_args,
+            funcs: terminator_funcs,
+            pos: terminator_pos,
+            ..
+        },
+    ) = block.terminator.as_ref().unwrap()
     {
         src.push(Code::Instruction(Instruction::Effect {
             op: EffectOps::Branch,
@@ -71,17 +74,23 @@ fn fix_goto_epilogue(
     // jump or return
     match block.terminator.as_ref() {
         Some(
-            instr @ Instruction::Effect {
-                op: EffectOps::Return,
+            instr @ (
+                _,
+                Instruction::Effect {
+                    op: EffectOps::Return,
+                    ..
+                },
+            ),
+        ) => src.push(Code::Instruction(instr.1.clone())),
+        _ if last_block => {}
+        Some((
+            _,
+            Instruction::Effect {
+                op: EffectOps::Jump,
+                pos,
                 ..
             },
-        ) => src.push(Code::Instruction(instr.clone())),
-        _ if last_block => {}
-        Some(Instruction::Effect {
-            op: EffectOps::Jump,
-            pos,
-            ..
-        }) => {
+        )) => {
             // jump to end
             src.push(Code::Instruction(Instruction::Effect {
                 op: EffectOps::Jump,
@@ -125,8 +134,10 @@ fn fix_jumps(
     visited: &HashSet<usize>,
     next_code_block: Option<&usize>,
 ) -> Vec<Code> {
-    let terminator_pos =
-        block.terminator.as_ref().and_then(|p| p.get_pos().or(None));
+    let terminator_pos = block
+        .terminator
+        .as_ref()
+        .and_then(|(_, p)| p.get_pos().or(None));
     match cfg.adj_lst.get(&block_id).unwrap() {
         CfgEdgeTo::Branch {
             true_node,
@@ -162,7 +173,7 @@ fn fix_jumps(
             }
         }
         CfgEdgeTo::Terminal => {
-            if let Some(t) = block.terminator.as_ref() {
+            if let Some((_, t)) = block.terminator.as_ref() {
                 src.push(Code::Instruction(t.clone()));
             }
         }
@@ -194,7 +205,7 @@ pub fn to_src(cfg: &Cfg) -> Vec<Code> {
                     label: format!("{BLOCK_LABEL_BASE}{id}"),
                 });
             }
-            for instr in &block.instrs {
+            for (_, instr) in &block.instrs {
                 src.push(Code::Instruction(instr.clone()));
             }
             src = fix_jumps(cfg, id, block, src, &visited, next_code_block);

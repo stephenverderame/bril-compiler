@@ -45,7 +45,7 @@ use super::{
 /// Set of variables which are not loop invariant
 #[derive(Clone)]
 pub struct MoveableInstrs {
-    not_invariant: HashSet<*const Instruction>,
+    not_invariant: HashSet<u64>,
     reaching_defs: Rc<AnalysisResult<ReachingDefs>>,
     lp: Rc<NaturalLoop>,
     /// The set of variables that are live out of the loop
@@ -81,9 +81,8 @@ impl MoveableInstrs {
     }
 
     #[must_use]
-    pub fn is_loop_invariant(&self, instr: &Instruction) -> bool {
-        instr.is_pure()
-            && !self.not_invariant.contains(&(instr as *const Instruction))
+    pub fn is_loop_invariant(&self, instr: &(u64, Instruction)) -> bool {
+        instr.1.is_pure() && !self.not_invariant.contains(&instr.0)
     }
 }
 
@@ -102,23 +101,24 @@ impl Fact for MoveableInstrs {
         }
     }
 
-    fn transfer(&self, instr: &Instruction, _: usize) -> Vec<Self>
+    fn transfer(&self, instr: &(u64, Instruction), _: usize) -> Vec<Self>
     where
         Self: std::marker::Sized,
     {
+        let (instr_id, instr) = instr;
         let mut not_inv = self.not_invariant.clone();
         if let Some(args) = instr.get_args() {
             for arg in args {
-                if self.reaching_defs.in_facts[&(instr as *const _)]
+                if self.reaching_defs.in_facts[instr_id]
                     .instrs_defining(arg)
                     .iter()
                     .any(|instr| self.not_invariant.contains(instr))
                     || self.live_exit_vars.contains(arg)
-                    || self.reaching_defs.in_facts[&(instr as *const _)]
+                    || self.reaching_defs.in_facts[instr_id]
                         .blocks_defining(arg)
                         .iter()
                         .any(|block| self.lp.nodes.contains(block))
-                        && self.reaching_defs.in_facts[&(instr as *const _)]
+                        && self.reaching_defs.in_facts[instr_id]
                             .blocks_defining(arg)
                             .len()
                             > 1
@@ -126,7 +126,7 @@ impl Fact for MoveableInstrs {
                     // argument uses a varying instruction OR
                     // argument is live-in to a loop exit node OR
                     // argument is defined in the loop and has more than one definition
-                    not_inv.insert(instr as *const _);
+                    not_inv.insert(*instr_id);
                 }
             }
         }
@@ -156,7 +156,7 @@ pub fn get_loop_invariant_instrs(
     nodes: &[usize],
     header: usize,
     res: &AnalysisResult<MoveableInstrs>,
-) -> Vec<(*const Instruction, Instruction)> {
+) -> Vec<(u64, Instruction)> {
     let mut queue = VecDeque::new();
     queue.push_back(header);
     let mut visited = HashSet::new();
@@ -170,7 +170,7 @@ pub fn get_loop_invariant_instrs(
             for instr in &block.instrs {
                 assert!(res.block_out_facts[&n].len() == 1);
                 if res.block_out_facts[&n][0].is_loop_invariant(instr) {
-                    instrs.push((instr as *const Instruction, instr.clone()));
+                    instrs.push(instr.clone());
                 }
             }
         }

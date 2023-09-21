@@ -17,8 +17,8 @@ pub const CFG_END_ID: usize = CFG_START_ID + 1;
 /// A basic block in the CFG
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct BasicBlock {
-    pub instrs: Vec<Instruction>,
-    pub terminator: Option<Instruction>,
+    pub instrs: Vec<(u64, Instruction)>,
+    pub terminator: Option<(u64, Instruction)>,
 }
 
 impl BasicBlock {
@@ -43,10 +43,13 @@ impl CfgNode {
         matches!(
             self,
             Self::Block(BasicBlock {
-                terminator: Some(Instruction::Effect {
-                    op: EffectOps::Branch,
-                    ..
-                }),
+                terminator: Some((
+                    _,
+                    Instruction::Effect {
+                        op: EffectOps::Branch,
+                        ..
+                    }
+                )),
                 ..
             })
         )
@@ -82,6 +85,7 @@ pub struct Cfg {
     pub blocks: BTreeMap<usize, CfgNode>,
     pub adj_lst: HashMap<usize, CfgEdgeTo>,
     pub labels: HashMap<usize, Vec<String>>,
+    pub last_instr_id: u64,
 }
 
 impl Cfg {
@@ -290,14 +294,18 @@ impl std::fmt::Display for CfgNode {
             Self::Block(BasicBlock { instrs, terminator }) => {
                 let hide_terminator = matches!(
                     terminator,
-                    Some(Instruction::Effect {
-                        op: EffectOps::Jump,
-                        ..
-                    })
+                    Some((
+                        _,
+                        Instruction::Effect {
+                            op: EffectOps::Jump,
+                            ..
+                        }
+                    ))
                 );
                 let total_size =
                     instrs.len() + terminator.as_ref().map_or(0, |_| 1);
-                for (idx, instr) in instrs.iter().chain(terminator).enumerate()
+                for (idx, (_, instr)) in
+                    instrs.iter().chain(terminator).enumerate()
                 {
                     Self::fmt_instruction(instr, f)?;
                     if idx < total_size.max(2) - 2 && hide_terminator

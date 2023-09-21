@@ -20,7 +20,11 @@ pub trait Fact: PartialEq + Clone {
 
     /// Returns the output fact of the transfer function for
     /// the given instruction
-    fn transfer(&self, instr: &Instruction, block_id: usize) -> Vec<Self>
+    fn transfer(
+        &self,
+        instr: &(u64, Instruction),
+        block_id: usize,
+    ) -> Vec<Self>
     where
         Self: std::marker::Sized;
 }
@@ -37,8 +41,10 @@ pub trait Direction {
     ///    The function is called on instructions in the order of the direction
     ///    of the analysis
     fn local_iter<'a>(
-        it: &mut dyn std::iter::DoubleEndedIterator<Item = &'a Instruction>,
-        func: &mut dyn FnMut(&'a Instruction),
+        it: &mut dyn std::iter::DoubleEndedIterator<
+            Item = &'a (u64, Instruction),
+        >,
+        func: &mut dyn FnMut(&'a (u64, Instruction)),
     );
 }
 
@@ -52,7 +58,7 @@ pub enum Dir {
 /// The result of an analysis
 #[allow(clippy::module_name_repetitions)]
 pub struct AnalysisResult<T: Fact> {
-    pub in_facts: HashMap<*const Instruction, T>,
+    pub in_facts: HashMap<u64, T>,
     pub block_out_facts: HashMap<usize, Vec<T>>,
 }
 
@@ -72,8 +78,8 @@ impl<T: Fact> AnalysisResult<T> {
         dir: Dir,
     ) -> (&'a T, &'a [T]) {
         let mut it = block.instrs.iter().chain(block.terminator.as_ref());
-        let instr = it.next().unwrap() as *const _;
-        let last = it.last().map_or(instr, |x| x as *const _);
+        let instr = it.next().unwrap().0;
+        let last = it.last().map_or(instr, |x| x.0);
         if dir == Dir::Forwards {
             (
                 self.in_facts.get(&instr).unwrap(),
@@ -115,19 +121,16 @@ impl<'a, T> Refy<'a, T> {
 fn analyze_basic_block<T: Fact, D: Direction>(
     cfg: &Cfg,
     block_id: usize,
-    mut res_in_facts: HashMap<*const Instruction, T>,
+    mut res_in_facts: HashMap<u64, T>,
     in_fact: &T,
-) -> (HashMap<*const Instruction, T>, Vec<T>) {
+) -> (HashMap<u64, T>, Vec<T>) {
     let mut fact = Refy::Ref(in_fact);
     let mut block_out = vec![];
     if let CfgNode::Block(block) = &cfg.blocks.get(&block_id).unwrap() {
         D::local_iter(
             &mut block.instrs.iter().chain(block.terminator.as_ref()),
             &mut |instr| {
-                res_in_facts.insert(
-                    instr as *const Instruction,
-                    fact.borrow(&block_out).clone(),
-                );
+                res_in_facts.insert(instr.0, fact.borrow(&block_out).clone());
                 block_out = fact.borrow(&block_out).transfer(instr, block_id);
                 assert!(!block_out.is_empty());
                 fact = Refy::Idx(0);
@@ -192,7 +195,7 @@ pub fn analyze<T: Fact, D: Direction>(
     use std::collections::hash_map::Entry;
     let mut in_facts: HashMap<usize, T> = HashMap::new();
     let mut out_facts: HashMap<usize, Vec<T>> = HashMap::new();
-    let mut res_in_facts: HashMap<*const Instruction, T> = HashMap::new();
+    let mut res_in_facts: HashMap<u64, T> = HashMap::new();
     let mut worklist: Vec<usize> = Vec::new();
     let adj_lst = D::get_adj_list(cfg);
     let top = top.unwrap_or_else(T::top);
@@ -245,8 +248,10 @@ impl Direction for Forwards {
     }
 
     fn local_iter<'a>(
-        it: &mut dyn std::iter::DoubleEndedIterator<Item = &'a Instruction>,
-        func: &mut dyn FnMut(&'a Instruction),
+        it: &mut dyn std::iter::DoubleEndedIterator<
+            Item = &'a (u64, Instruction),
+        >,
+        func: &mut dyn FnMut(&'a (u64, Instruction)),
     ) {
         for instr in it {
             func(instr);
@@ -278,8 +283,10 @@ impl Direction for Backwards {
     }
 
     fn local_iter<'a>(
-        it: &mut dyn std::iter::DoubleEndedIterator<Item = &'a Instruction>,
-        func: &mut dyn FnMut(&'a Instruction),
+        it: &mut dyn std::iter::DoubleEndedIterator<
+            Item = &'a (u64, Instruction),
+        >,
+        func: &mut dyn FnMut(&'a (u64, Instruction)),
     ) {
         for instr in it.rev() {
             func(instr);

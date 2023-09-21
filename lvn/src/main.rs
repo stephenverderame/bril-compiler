@@ -510,10 +510,11 @@ fn make_id_instr(
 /// * `new_instrs` - The updated new instructions which may now contain an extra
 ///     id instruction
 fn handle_overwrite(
+    instr_id: u64,
     instr: &Instruction,
     mut state: LvnState,
-    mut new_instrs: Vec<Instruction>,
-) -> (LvnState, Vec<Instruction>) {
+    mut new_instrs: Vec<(u64, Instruction)>,
+) -> (LvnState, Vec<(u64, Instruction)>) {
     if matches!(instr, Instruction::Value { dest, op: ValueOps::Id, args, ..} if args.len() == 1 && &args[0] == dest)
     {
         // ignore the instruction:
@@ -535,15 +536,18 @@ fn handle_overwrite(
         }
 
         if let Some((new_home, vn)) = rehome {
-            new_instrs.push(Instruction::Value {
-                args: vec![dest],
-                dest: new_home.clone(),
-                funcs: vec![],
-                labels: vec![],
-                op: ValueOps::Id,
-                pos: instr.get_pos(),
-                op_type: instr.get_type().unwrap(),
-            });
+            new_instrs.push((
+                instr_id,
+                Instruction::Value {
+                    args: vec![dest],
+                    dest: new_home.clone(),
+                    funcs: vec![],
+                    labels: vec![],
+                    op: ValueOps::Id,
+                    pos: instr.get_pos(),
+                    op_type: instr.get_type().unwrap(),
+                },
+            ));
             state.env.insert(new_home, *vn);
             state.lvn_temp_num += 1;
         }
@@ -618,14 +622,17 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
     let mut uid = 0u64;
     let mut new_instrs = vec![];
     let mut new_terminator = None;
-    for instr in block.instrs.iter_mut().chain(block.terminator.as_mut()) {
+    for (instr_id, instr) in
+        block.instrs.iter_mut().chain(block.terminator.as_mut())
+    {
         state = gen_new_vals(instr, state);
         rewrite_instr(instr, &state);
         let val = make_val(instr, &state.env, &mut uid)
             .map(|v| simplify(v, &state.consts));
         if let Some(val) = val {
             *instr = val_to_instr(&val, &state.locs, &state.consts, instr);
-            (state, new_instrs) = handle_overwrite(instr, state, new_instrs);
+            (state, new_instrs) =
+                handle_overwrite(*instr_id, &instr, state, new_instrs);
             let val_num = match get_val_num(&val, &state.vns) {
                 None => {
                     state.vns.insert(val, state.cur_val);
@@ -647,9 +654,9 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
             state.env = update_env(instr, val_num, state.env);
         }
         if cfg::is_terminator(instr) {
-            new_terminator = Some(instr.clone());
+            new_terminator = Some((*instr_id, instr.clone()));
         } else {
-            new_instrs.push(instr.clone());
+            new_instrs.push((*instr_id, instr.clone()));
         }
     }
     block.instrs = new_instrs;

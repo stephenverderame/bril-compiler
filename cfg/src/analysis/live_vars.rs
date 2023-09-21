@@ -29,10 +29,11 @@ impl Fact for LiveVars {
         Self { vars }
     }
 
-    fn transfer(&self, instr: &Instruction, _: usize) -> Vec<Self>
+    fn transfer(&self, instr: &(u64, Instruction), _: usize) -> Vec<Self>
     where
         Self: std::marker::Sized,
     {
+        let instr = &instr.1;
         let mut res = self.clone();
         if let Some(dest) = instr.get_dest() {
             res.vars.remove(&dest);

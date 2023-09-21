@@ -1,4 +1,4 @@
-use bril_rs::{Code, Instruction};
+use bril_rs::Code;
 use cfg::{
     analysis::{analyze, live_vars::LiveVars, AnalysisResult, Backwards},
     BasicBlock, CfgNode,
@@ -34,22 +34,16 @@ fn block_dce(
     analysis_res: &AnalysisResult<LiveVars>,
 ) -> bool {
     let mut can_remove = vec![];
-    for instr in block.instrs.iter() {
+    for (instr_id, instr) in block.instrs.iter() {
         if let Some(dest) = instr.get_dest() {
             if instr.is_semi_pure()
-                && !analysis_res
-                    .in_facts
-                    .get(&(instr as *const Instruction))
-                    .unwrap()
-                    .is_live_out(&dest)
+                && !analysis_res.in_facts[instr_id].is_live_out(&dest)
             {
-                can_remove.push(instr as *const Instruction);
+                can_remove.push(*instr_id);
             }
         }
     }
-    block
-        .instrs
-        .retain(|i| !can_remove.contains(&(i as *const _)));
+    block.instrs.retain(|(id, _)| !can_remove.contains(id));
     !can_remove.is_empty()
 }
 
