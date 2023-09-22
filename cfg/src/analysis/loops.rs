@@ -112,7 +112,7 @@ fn find_backedges(cfg: &Cfg, domtree: &DomTree) -> Vec<(usize, usize)> {
 /// # Returns
 /// The merged natural loop with the given header or `None` if no backedges
 /// have the given header
-fn merge_loops(
+fn form_loop(
     header: usize,
     cfg: &Cfg,
     backedges: &mut Vec<(usize, usize)>,
@@ -143,33 +143,7 @@ fn merge_loops(
     })
 }
 
-/// Returns all natural loops which have the given header or are nested within
-/// a loop with the given header
-/// # Arguments
-/// * `backedges` - The list of backedges
-/// * `cfg` - The CFG
-/// * `header` - The header of the natural loop
-/// # Returns
-/// The natural loop with the given header or `None` if no backedges have the
-/// given header
-fn form_loop(
-    backedges: &mut Vec<(usize, usize)>,
-    cfg: &Cfg,
-    header: usize,
-) -> Option<NaturalLoop> {
-    if let Some(mut lp) = merge_loops(header, cfg, backedges) {
-        for n in &lp.nodes {
-            if let Some(nested_lp) = form_loop(backedges, cfg, *n) {
-                lp.nested.push(nested_lp);
-            }
-        }
-        Some(lp)
-    } else {
-        None
-    }
-}
-
-/// Adds a natural loop to the list of natural loops
+/// Adds a natural loop to the list of natural loops.
 /// If any of the existing loops in the list have a header which is in the new loop,
 /// the existing loop is added as a nested loop of the new loop
 /// # Arguments
@@ -181,16 +155,40 @@ fn add_to_loop_list(
     mut loops: Vec<NaturalLoop>,
     mut lp: NaturalLoop,
 ) -> Vec<NaturalLoop> {
+    // check if any existing loops are a child of `lp`
     let mut children = BinaryHeap::new();
-    for (idx, node) in loops.iter().enumerate() {
-        if lp.nodes.contains(&node.header) {
+    for (idx, existing_node) in loops.iter().enumerate() {
+        if lp.nodes.contains(&existing_node.header) {
+            // loop contains the header of existing node, that existing
+            // node should be a child of `lp`
             children.push(idx);
         }
     }
-    while let Some(nest_idx) = children.pop() {
-        lp.nested.push(loops.swap_remove(nest_idx));
+    while let Some(child_idx) = children.pop() {
+        lp.nested = add_to_loop_list(lp.nested, loops.swap_remove(child_idx));
     }
-    loops.push(lp);
+
+    // check if any existing loops are a parent of `lp`
+    let mut parent = None;
+    for (idx, existing_lp) in loops.iter().enumerate() {
+        if existing_lp.nodes.contains(&lp.header) {
+            // existing loop contains the header of `lp`, `lp` should be a
+            // child of the existing loop
+            assert!(parent.is_none());
+            // there can't be overlapping, non-nested loops and
+            // any nested loops formed should have already been merged into
+            // a tree
+            parent = Some(idx);
+        }
+    }
+    // add `lp` to the list of loops
+    match parent {
+        Some(parent_idx) => {
+            loops[parent_idx].nested =
+                add_to_loop_list(loops[parent_idx].nested.clone(), lp);
+        }
+        None => loops.push(lp),
+    };
     loops
 }
 
@@ -204,12 +202,8 @@ pub fn find_natural_loops(cfg: &Cfg, domtree: &DomTree) -> Vec<NaturalLoop> {
     let mut res = Vec::new();
     let mut backedges = find_backedges(cfg, domtree);
     while let Some((_, v)) = backedges.last().copied() {
-        let lp = form_loop(&mut backedges, cfg, v);
+        let lp = form_loop(v, cfg, &mut backedges);
         if let Some(lp) = lp {
-            // only need to take into account child loops that have
-            // already been made because if the parent loop is made first,
-            // any child loops will be added to the parent loop in
-            // `form_loop`
             res = add_to_loop_list(res, lp);
         }
     }

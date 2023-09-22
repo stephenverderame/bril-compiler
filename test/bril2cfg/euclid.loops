@@ -27,7 +27,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			gcd_3;
 			gcd_4;
 		}

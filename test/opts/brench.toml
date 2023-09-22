@@ -4,19 +4,19 @@ benchmarks = '**/*.bril'
 [runs.baseline]
 pipeline = ["bril2json", "brili -p {args}"]
 
-[runs.reorder]
-pipeline = ["bril2json", "cargo run --bin dummy-pass", "brili -p {args}"]
+# [runs.reorder]
+# pipeline = ["bril2json", "cargo run --bin dummy-pass", "brili -p {args}"]
 
-[runs.local-dce]
-pipeline = ["bril2json", "cargo run --bin local-dce", "brili -p {args}"]
+# [runs.local-dce]
+# pipeline = ["bril2json", "cargo run --bin local-dce", "brili -p {args}"]
 
-[runs.lvn-local]
-pipeline = [
-    "bril2json",
-    "cargo run --bin lvn",
-    "cargo run --bin local-dce",
-    "brili -p {args}",
-]
+# [runs.lvn-local]
+# pipeline = [
+#     "bril2json",
+#     "cargo run --bin lvn",
+#     "cargo run --bin local-dce",
+#     "brili -p {args}",
+# ]
 
 [runs.lvn]
 pipeline = [
@@ -25,3 +25,15 @@ pipeline = [
     "cargo run --bin dce",
     "brili -p {args}",
 ]
+
+# [runs.licm]
+# pipeline = ["bril2json", "cargo run --bin licm", "brili -p {args}"]
+
+# [runs.toal]
+# pipeline = [
+#     "bril2json",
+#     "cargo run --bin licm",
+#     "cargo run --bin lvn",
+#     "cargo run --bin dce",
+#     "brili -p {args}",
+# ]

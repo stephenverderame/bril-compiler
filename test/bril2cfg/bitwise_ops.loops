@@ -23,7 +23,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			loop_subroutine_3;
 			loop_subroutine_4;
 			loop_subroutine_5;

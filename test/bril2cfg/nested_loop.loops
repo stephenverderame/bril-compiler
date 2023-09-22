@@ -15,7 +15,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			main_3;
 			main_4;
 			main_5;
@@ -27,7 +27,7 @@ digraph {
 				label="";
 				color="green";
 				style="rounded";
-				bgcolor="#FFFFFF00";
+				bgcolor="#FFFFFF";
 				main_6;
 				main_7;
 			}

@@ -10,7 +10,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			main_3;
 			main_4;
 		}

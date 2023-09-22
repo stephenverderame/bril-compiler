@@ -13,7 +13,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			main_3;
 			main_4;
 			main_5;
@@ -46,7 +46,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			checkPrime_5;
 			checkPrime_6;
 			checkPrime_8;

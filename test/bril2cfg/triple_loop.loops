@@ -16,7 +16,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			main_3;
 			main_4;
 			main_5;
@@ -29,20 +29,20 @@ digraph {
 				label="";
 				color="green";
 				style="rounded";
-				bgcolor="#FFFFFF00";
+				bgcolor="#FFFFFF";
 				main_5;
 				main_6;
 				main_7;
 				main_8;
 				main_9;
-			}
-			subgraph cluster_main_loop7 {
-				label="";
-				color="green";
-				style="rounded";
-				bgcolor="#FFFFFF00";
-				main_7;
-				main_8;
+				subgraph cluster_main_loop7 {
+					label="";
+					color="red";
+					style="rounded";
+					bgcolor="#FFFFFF";
+					main_7;
+					main_8;
+				}
 			}
 		}
 

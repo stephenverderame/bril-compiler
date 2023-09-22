@@ -165,7 +165,7 @@ fn display_loop(lp: &NaturalLoop, nest_lvl: usize, fn_name: &str) {
     println!("{body_indent}label=\"\";");
     println!("{body_indent}color=\"{color}\";");
     println!("{body_indent}style=\"rounded\";");
-    println!("{body_indent}bgcolor=\"#FFFFFF00\";");
+    println!("{body_indent}bgcolor=\"#FFFFFF\";");
     // sort for deterministic output
     let nodes: BTreeSet<_> = lp.nodes.iter().collect();
     for node in nodes {
@@ -194,13 +194,16 @@ fn display_clusters(cfg: &Cfg, args: &CLIArgs, fn_name: &str) {
 
 /// Prints the edges of the dominator tree
 fn display_dom(cfg: &Cfg, fn_name: &str) {
-    println!("\t\t{fn_name}_{CFG_END_ID} [label=\"END\", shape=\"rectangle\", style=\"rounded\"];");
     let dom = compute_dominators(cfg);
     for n in cfg.blocks.keys() {
         let dominated = dom.immediately_dominated(*n);
         let sorted_dominated: BTreeSet<_> = dominated.iter().collect();
         for d in sorted_dominated {
-            println!("\t\t{fn_name}_{n} -> {fn_name}_{d} [style=\"dashed\"];");
+            if *n != CFG_END_ID && *d != CFG_END_ID {
+                println!(
+                    "\t\t{fn_name}_{n} -> {fn_name}_{d} [style=\"dashed\"];"
+                );
+            }
         }
     }
     dom.check_dom_tree(cfg);

@@ -8,10 +8,11 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/target/debug/licm",
+            "program": "${workspaceFolder}/target/debug/bril2cfg",
             "args": [
                 "-f",
                 "${workspaceFolder}/debug.json",
+                "--loops"
             ],
             "cwd": "${workspaceFolder}"
         }

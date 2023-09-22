@@ -11,7 +11,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			sumOfSquares_3;
 			sumOfSquares_4;
 		}
@@ -34,7 +34,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			squareOfSum_3;
 			squareOfSum_4;
 		}

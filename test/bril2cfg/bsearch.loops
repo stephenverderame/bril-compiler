@@ -20,7 +20,7 @@ digraph {
 			label="";
 			color="blue";
 			style="rounded";
-			bgcolor="#FFFFFF00";
+			bgcolor="#FFFFFF";
 			print_array_3;
 			print_array_4;
 			print_array_5;
