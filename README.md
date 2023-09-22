@@ -27,4 +27,5 @@ compiler passes
 * `lvn` - Local value numbering performed on basic blocks. Also does 
 constant folding, constant propagation, copy propagation, and algebraic simplification
 at a basic block level.
+* `dce` - (Regular/Global) dead code elimination
 * `licm` - Loop invariant code motion
