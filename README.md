@@ -10,11 +10,13 @@ Each of these tools is developed unix style and communicates via the shell.
 
 * `bril-rs` - Simple rust library for interfacing with Bril. Most of it
 is taken from Patrick LaFontaine from [https://github.com/sampsyo/bril](https://github.com/sampsyo/bril)
-* `cfg` - Library for constructing CFGs and performing data flow analyses.
+* `cfg` - Library for constructing CFGs and performing data flow analyses. Currently
+implemented analyses include reaching definitions, constructing dominator trees,
+live variables, loop invariant instructions, and finding natural loops.
 * `bril2cfg` - Converts bril to dot graphs. Can convert to CFG graphs, display data flow
 analyses, and display the dominator tree.
 * `test` - Test directory for [TURNT](https://github.com/cucapra/turnt) snapshot tests.
-Most tests come from [https://github.com/sampsyo/bril](https://github.com/sampsyo/bril) benchmarks.
+Most tests come from [https://github.com/sampsyo/bril](the bril repo) benchmarks.
 * `dummy-pass` - Simply converts a bril program into a CFG and back into a bril program.
 Removes unnecessary jumps in the conversion process.
 * `local-dce` - Dead code elimination as a local optimization performed on basic
@@ -25,3 +27,4 @@ compiler passes
 * `lvn` - Local value numbering performed on basic blocks. Also does 
 constant folding, constant propagation, copy propagation, and algebraic simplification
 at a basic block level.
+* `licm` - Loop invariant code motion

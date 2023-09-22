@@ -20,7 +20,6 @@ impl NaturalLoop {
     /// Returns the natural loop for the backedge `(u, v)` in the CFG
     /// This is found by performing a DFS from `v` and collecting all nodes
     /// until the path reaches `u`
-    /// Writeup note: Basically done by Copilot
     fn from_backedge(backedge: (usize, usize), cfg: &Cfg) -> Option<Self> {
         let transposed = cfg.preds();
         let (u, header) = backedge;
