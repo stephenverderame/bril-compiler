@@ -1,0 +1,70 @@
+# ARGS: 10
+@main(v0: int) {
+  cnt: int = id v0;
+  v2: int = const 0;
+  i: int = id v2;
+.for.cond.1:
+  v3: int = id i;
+  v4: int = id cnt;
+  v5: bool = lt v3 v4;
+  br v5 .for.body.1 .for.end.1;
+.for.body.1:
+  v6: int = id i;
+  v7: int = const 2;
+  v8: int = mul v6 v7;
+  outer: int = id v8;
+  v10: int = const 0;
+  j: int = id v10;
+.for.cond.9:
+  v11: int = id j;
+  v12: int = id cnt;
+  v13: bool = lt v11 v12;
+  br v13 .for.body.9 .for.end.9;
+.for.body.9:
+  v14: int = id outer;
+  v15: int = const 10;
+  v16: int = add v14 v15;
+  inner: int = id v16;
+  v18: int = const 0;
+  k: int = id v18;
+.for.cond.17:
+  v19: int = id k;
+  v20: int = id cnt;
+  v21: bool = lt v19 v20;
+  br v21 .for.body.17 .for.end.17;
+.for.body.17:
+  v22: int = id inner;
+  v23: int = id outer;
+  v24: int = mul v22 v23;
+  inner_inner: int = id v24;
+  v25: int = id inner_inner;
+  print v25;
+  v26: int = const 0;
+  v27: int = id i;
+  print v27;
+  v28: int = const 0;
+  v29: int = id j;
+  print v29;
+  v30: int = const 0;
+  v31: int = id k;
+  print v31;
+  v32: int = const 0;
+  v33: int = id k;
+  v34: int = const 1;
+  v35: int = add v33 v34;
+  k: int = id v35;
+  jmp .for.cond.17;
+.for.end.17:
+  v36: int = id j;
+  v37: int = const 1;
+  v38: int = add v36 v37;
+  j: int = id v38;
+  jmp .for.cond.9;
+.for.end.9:
+  v39: int = id i;
+  v40: int = const 1;
+  v41: int = add v39 v40;
+  i: int = id v41;
+  jmp .for.cond.1;
+.for.end.1:
+}

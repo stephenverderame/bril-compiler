@@ -632,7 +632,7 @@ fn block_lvn(block: &mut BasicBlock, mut state: LvnState) -> u64 {
         if let Some(val) = val {
             *instr = val_to_instr(&val, &state.locs, &state.consts, instr);
             (state, new_instrs) =
-                handle_overwrite(*instr_id, &instr, state, new_instrs);
+                handle_overwrite(*instr_id, instr, state, new_instrs);
             let val_num = match get_val_num(&val, &state.vns) {
                 None => {
                     state.vns.insert(val, state.cur_val);

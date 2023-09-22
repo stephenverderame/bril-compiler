@@ -12,15 +12,16 @@ impl LiveVars {
     pub fn is_live_out(&self, var: &str) -> bool {
         self.vars.contains(var)
     }
-}
 
-impl Fact for LiveVars {
-    fn top() -> Self {
+    #[must_use]
+    pub fn top() -> Self {
         Self {
             vars: HashSet::new(),
         }
     }
+}
 
+impl Fact for LiveVars {
     fn meet(&self, b: &Self) -> Self {
         let mut vars = self.vars.clone();
         for v in &b.vars {

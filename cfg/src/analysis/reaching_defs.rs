@@ -1,3 +1,5 @@
+use bril_rs::EffectOps;
+
 use super::*;
 use std::collections::{HashMap, HashSet};
 
@@ -15,7 +17,12 @@ impl ReachingDefs {
     pub fn blocks_defining(&self, arg: &str) -> Vec<usize> {
         self.defs
             .get(arg)
-            .map(|v| v.iter().map(|i| self.instrs[i].0).collect())
+            .map(|v| {
+                v.iter()
+                    // a little hack to handle function arguments
+                    .map(|i| if *i == u64::MAX { 0 } else { self.instrs[i].0 })
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -39,16 +46,37 @@ impl ReachingDefs {
     pub fn reached_by(&self, instr_id: u64) -> bool {
         self.instrs.contains_key(&instr_id)
     }
+
+    #[must_use]
+    pub fn top(fn_args: &[String]) -> Self {
+        let mut defs = HashMap::new();
+        let mut instrs = HashMap::new();
+        if !fn_args.is_empty() {
+            instrs.insert(
+                u64::MAX,
+                (
+                    CFG_START_ID,
+                    Instruction::Effect {
+                        op: EffectOps::Call,
+                        args: vec![],
+                        funcs: vec![],
+                        labels: vec![],
+                        pos: None,
+                    },
+                ),
+            );
+        }
+        for arg in fn_args {
+            let mut hs = HashSet::new();
+            // special ID for instruction which "defines" the function args
+            hs.insert(u64::MAX);
+            defs.insert(arg.to_string(), hs);
+        }
+        Self { instrs, defs }
+    }
 }
 
 impl Fact for ReachingDefs {
-    fn top() -> Self {
-        Self {
-            defs: HashMap::new(),
-            instrs: HashMap::new(),
-        }
-    }
-
     fn meet(&self, b: &Self) -> Self {
         let mut defs = self.defs.clone();
         let mut instrs = self.instrs.clone();

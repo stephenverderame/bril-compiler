@@ -222,7 +222,8 @@ fn display_facts(
     let mut res = HashMap::new();
     match df {
         Some(x) if x == "live_vars" => {
-            let out = analyze::<LiveVars, Backwards>(cfg, None, None);
+            let out =
+                analyze::<LiveVars, Backwards>(cfg, &LiveVars::top(), None);
             for (k, v) in &cfg.blocks {
                 if let CfgNode::Block(block) = v {
                     let (out_fact, in_facts) =

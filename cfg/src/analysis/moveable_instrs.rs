@@ -18,7 +18,6 @@ pub struct MoveableInstrs {
     not_invariant: HashSet<u64>,
     not_inv_vars: HashSet<String>,
     reaching_defs: Rc<AnalysisResult<ReachingDefs>>,
-    f_args: Rc<Vec<String>>,
     lp: Rc<NaturalLoop>,
     /// The set of variables that are live out of the loop
     live_exit_vars: Rc<HashSet<String>>,
@@ -33,11 +32,10 @@ impl PartialEq for MoveableInstrs {
 impl MoveableInstrs {
     /// Constructs a new top element of the data flow
     #[must_use]
-    pub fn new(
+    pub fn top(
         reaching_defs: Rc<AnalysisResult<ReachingDefs>>,
         lp: Rc<NaturalLoop>,
         live_vars: &AnalysisResult<LiveVars>,
-        f_args: Rc<Vec<String>>,
     ) -> Self {
         let mut live_exit_vars = HashSet::new();
         for n in &lp.exits {
@@ -51,7 +49,6 @@ impl MoveableInstrs {
             reaching_defs,
             lp,
             live_exit_vars: Rc::new(live_exit_vars),
-            f_args,
         }
     }
 
@@ -62,10 +59,6 @@ impl MoveableInstrs {
 }
 
 impl Fact for MoveableInstrs {
-    fn top() -> Self {
-        unimplemented!()
-    }
-
     fn meet(&self, b: &Self) -> Self {
         let not_inv = self.not_invariant.union(&b.not_invariant);
         let not_inv_vars = self.not_inv_vars.union(&b.not_inv_vars);
@@ -75,7 +68,6 @@ impl Fact for MoveableInstrs {
             reaching_defs: self.reaching_defs.clone(),
             lp: self.lp.clone(),
             live_exit_vars: self.live_exit_vars.clone(),
-            f_args: self.f_args.clone(),
         }
     }
 
@@ -96,11 +88,6 @@ impl Fact for MoveableInstrs {
         }
         if let Some(args) = instr.get_args() {
             for arg in args {
-                // max definitions of an argument
-                // 0 if the argument is a function argument (bc we imagine function
-                // arguments to be defined at the beginning of the function), so
-                // if there is 1 other definition, that would be two separate blocks
-                let arg_max_defs = usize::from(!self.f_args.contains(arg));
                 if self.reaching_defs.in_facts[instr_id]
                     .instrs_defining(arg)
                     .iter()
@@ -112,13 +99,14 @@ impl Fact for MoveableInstrs {
                         && self.reaching_defs.in_facts[instr_id]
                             .blocks_defining(arg)
                             .len()
-                            > arg_max_defs
+                            > 1
                     || self.not_inv_vars.contains(arg)
                 {
                     // argument uses a varying instruction OR
                     // argument is defined in the loop and has more than one definition
                     not_inv.insert(*instr_id);
                     instr.get_dest().map(|d| not_inv_vars.insert(d));
+                    not_inv_vars.insert(arg.to_string());
                 }
             }
         }
@@ -128,7 +116,6 @@ impl Fact for MoveableInstrs {
             reaching_defs: self.reaching_defs.clone(),
             lp: self.lp.clone(),
             live_exit_vars: self.live_exit_vars.clone(),
-            f_args: self.f_args.clone(),
         }]
     }
 }

@@ -11,9 +11,6 @@ pub mod reaching_defs;
 
 /// A fact in the analysis
 pub trait Fact: PartialEq + Clone {
-    /// Returns the top element of the lattice
-    fn top() -> Self;
-
     /// Returns the greatest lower bound of the two facts
     #[must_use]
     fn meet(&self, b: &Self) -> Self;
@@ -123,6 +120,7 @@ fn analyze_basic_block<T: Fact, D: Direction>(
     block_id: usize,
     mut res_in_facts: HashMap<u64, T>,
     in_fact: &T,
+    top: &T,
 ) -> (HashMap<u64, T>, Vec<T>) {
     let mut fact = Refy::Ref(in_fact);
     let mut block_out = vec![];
@@ -136,6 +134,8 @@ fn analyze_basic_block<T: Fact, D: Direction>(
                 fact = Refy::Idx(0);
             },
         );
+    } else {
+        block_out = vec![top.clone()];
     }
     (res_in_facts, block_out)
 }
@@ -180,8 +180,8 @@ fn broadcast_out_facts<T: Fact>(
 /// Performs an analysis pass on the CFG
 /// # Arguments
 /// * `cfg` - The CFG
+/// * `top` - The top fact of the lattice
 /// * `restricted_set` - The set of blocks to analyze or None to analyze all blocks
-/// * `top` - The top element of the lattice or `None` to use `T::top()`
 /// # Returns
 /// * The input and output facts for each instruction
 /// # Panics
@@ -189,8 +189,8 @@ fn broadcast_out_facts<T: Fact>(
 #[must_use]
 pub fn analyze<T: Fact, D: Direction>(
     cfg: &Cfg,
+    top: &T,
     restricted_set: Option<&[usize]>,
-    top: Option<T>,
 ) -> AnalysisResult<T> {
     use std::collections::hash_map::Entry;
     let mut in_facts: HashMap<usize, T> = HashMap::new();
@@ -198,7 +198,6 @@ pub fn analyze<T: Fact, D: Direction>(
     let mut res_in_facts: HashMap<u64, T> = HashMap::new();
     let mut worklist: Vec<usize> = Vec::new();
     let adj_lst = D::get_adj_list(cfg);
-    let top = top.unwrap_or_else(T::top);
     in_facts.extend(cfg.blocks.keys().map(|k| (*k, top.clone())));
     worklist.extend(cfg.blocks.keys());
     in_facts.insert(CFG_START_ID, top.clone());
@@ -215,12 +214,14 @@ pub fn analyze<T: Fact, D: Direction>(
         let in_fact = in_facts.get(&block).unwrap();
         let out_fact;
         (res_in_facts, out_fact) =
-            analyze_basic_block::<T, D>(cfg, block, res_in_facts, in_fact);
+            analyze_basic_block::<T, D>(cfg, block, res_in_facts, in_fact, top);
         let add_neighbors = match out_facts.entry(block) {
             Entry::Occupied(o) => o.get() != &out_fact,
             Entry::Vacant(_) => true,
         };
-        if add_neighbors && block != CFG_END_ID && block != CFG_START_ID {
+        if add_neighbors
+        /*&& block != CFG_END_ID && block != CFG_START_ID*/
+        {
             in_facts =
                 broadcast_out_facts(&out_fact, in_facts, &adj_lst, block);
             out_facts.insert(block, out_fact);

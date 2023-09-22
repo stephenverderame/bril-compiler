@@ -1,7 +1,7 @@
 use crate::CFG_END_ID;
 
 use super::{dominators::DomTree, Cfg};
-use std::collections::HashSet;
+use std::collections::{BinaryHeap, HashSet};
 
 /// A natural loop in the CFG
 #[derive(Clone, Debug)]
@@ -119,14 +119,15 @@ fn merge_loops(
     backedges: &mut Vec<(usize, usize)>,
 ) -> Option<NaturalLoop> {
     let mut edges = Vec::new();
-    let mut to_remove = Vec::new();
+    let mut to_remove = BinaryHeap::new();
     for (idx, edge @ (_, v)) in backedges.iter().enumerate() {
         if v == &header {
             edges.push(*edge);
             to_remove.push(idx);
         }
     }
-    for idx in to_remove {
+    // pop back to front so indices don't change
+    while let Some(idx) = to_remove.pop() {
         backedges.swap_remove(idx);
     }
     let mut lp = None;
@@ -181,13 +182,13 @@ fn add_to_loop_list(
     mut loops: Vec<NaturalLoop>,
     mut lp: NaturalLoop,
 ) -> Vec<NaturalLoop> {
-    let mut children = Vec::new();
+    let mut children = BinaryHeap::new();
     for (idx, node) in loops.iter().enumerate() {
         if lp.nodes.contains(&node.header) {
             children.push(idx);
         }
     }
-    for nest_idx in children {
+    while let Some(nest_idx) = children.pop() {
         lp.nested.push(loops.swap_remove(nest_idx));
     }
     loops.push(lp);
