@@ -16,7 +16,7 @@ live variables, loop invariant instructions, and finding natural loops.
 * `bril2cfg` - Converts bril to dot graphs. Can convert to CFG graphs, display data flow
 analyses, and display the dominator tree.
 * `test` - Test directory for [TURNT](https://github.com/cucapra/turnt) snapshot tests.
-Most tests come from [https://github.com/sampsyo/bril](the bril repo) benchmarks.
+Most tests come from [the bril repo](https://github.com/sampsyo/bril) benchmarks.
 * `dummy-pass` - Simply converts a bril program into a CFG and back into a bril program.
 Removes unnecessary jumps in the conversion process.
 * `local-dce` - Dead code elimination as a local optimization performed on basic
