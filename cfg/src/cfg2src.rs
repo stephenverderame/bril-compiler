@@ -1,5 +1,5 @@
 use super::*;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{BTreeSet, HashSet, VecDeque};
 
 /// The base name (non-unique) of a block label.
 const BLOCK_LABEL_BASE: &str = "block.";
@@ -225,7 +225,7 @@ pub fn to_src(cfg: &Cfg) -> Vec<Code> {
 fn all_marked_preds(
     node: usize,
     preds: &HashMap<usize, Vec<usize>>,
-    unmarked: &HashSet<usize>,
+    unmarked: &BTreeSet<usize>,
 ) -> bool {
     preds
         .get(&node)
@@ -239,7 +239,7 @@ fn order_blocks(
     preds: &HashMap<usize, Vec<usize>>,
 ) -> VecDeque<usize> {
     let mut order = VecDeque::new();
-    let mut unmarked = cfg.blocks.keys().copied().collect::<HashSet<_>>();
+    let mut unmarked: BTreeSet<_> = cfg.blocks.keys().copied().collect();
     unmarked.remove(&CFG_START_ID);
     unmarked.remove(&CFG_END_ID);
     let mut n = CFG_START_ID;
