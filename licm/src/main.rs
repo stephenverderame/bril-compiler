@@ -11,7 +11,7 @@ use cfg::{
         loops::{self, NaturalLoop},
         moveable_instrs::{get_loop_invariant_instrs, MoveableInstrs},
         reaching_defs::ReachingDefs,
-        AnalysisResult, Backwards, Dir, Forwards,
+        AnalysisResult, Dir,
     },
     BasicBlock, CfgEdgeTo, CfgNode,
 };
@@ -49,13 +49,9 @@ fn licm_loop(
 ) -> Cfg {
     #![allow(clippy::manual_retain)]
     // reanalyze bc the CFG is changing
-    let reaching_defs = Rc::new(analyze::<ReachingDefs, Forwards>(
-        &cfg,
-        &ReachingDefs::top(&f_args),
-        None,
-    ));
-    let live_vars =
-        analyze::<LiveVars, Backwards>(&cfg, &LiveVars::top(), None);
+    let reaching_defs =
+        Rc::new(analyze(&cfg, &ReachingDefs::top(&f_args), None));
+    let live_vars = analyze(&cfg, &LiveVars::top(), None);
     let moveable_instrs = loop_invariant_instrs(
         &cfg,
         reaching_defs.clone(),
@@ -252,7 +248,7 @@ fn loop_invariant_instrs(
     live_vars: &AnalysisResult<LiveVars>,
 ) -> Vec<(u64, Instruction)> {
     let nodes = Rc::new(lp.nodes.iter().copied().collect::<Vec<usize>>());
-    let loop_inv = analyze::<MoveableInstrs, Forwards>(
+    let loop_inv = analyze(
         cfg,
         &MoveableInstrs::top(reaching_defs, lp.clone(), live_vars),
         Some(&nodes),

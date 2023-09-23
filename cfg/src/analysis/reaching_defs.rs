@@ -77,6 +77,8 @@ impl ReachingDefs {
 }
 
 impl Fact for ReachingDefs {
+    type Dir = Forwards;
+
     fn meet(&self, b: &Self) -> Self {
         let mut defs = self.defs.clone();
         let mut instrs = self.instrs.clone();

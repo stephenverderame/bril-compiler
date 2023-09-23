@@ -9,7 +9,7 @@ use crate::{Cfg, CfgNode};
 
 use super::{
     live_vars::LiveVars, loops::NaturalLoop, reaching_defs::ReachingDefs,
-    AnalysisResult, Fact,
+    AnalysisResult, Fact, Forwards,
 };
 
 /// Set of variables which are not loop invariant
@@ -59,6 +59,8 @@ impl MoveableInstrs {
 }
 
 impl Fact for MoveableInstrs {
+    type Dir = Forwards;
+
     fn meet(&self, b: &Self) -> Self {
         let not_inv = self.not_invariant.union(&b.not_invariant);
         let not_inv_vars = self.not_inv_vars.union(&b.not_inv_vars);

@@ -1,6 +1,6 @@
 use bril_rs::Code;
 use cfg::{
-    analysis::{analyze, live_vars::LiveVars, AnalysisResult, Backwards},
+    analysis::{analyze, live_vars::LiveVars, AnalysisResult},
     BasicBlock, CfgNode,
 };
 use common_cli::{cli_args, compiler_pass};
@@ -14,8 +14,7 @@ fn dce(mut cfg: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
     let mut changed = true;
     while changed {
         changed = false;
-        let analysis_res =
-            analyze::<LiveVars, Backwards>(&cfg, &LiveVars::top(), None);
+        let analysis_res = analyze(&cfg, &LiveVars::top(), None);
         for block in
             &mut cfg.blocks.iter_mut().filter_map(|(_, node)| match node {
                 CfgNode::Block(block) => Some(block),

@@ -46,6 +46,8 @@ impl Fact for LiveVars {
         }
         vec![res]
     }
+
+    type Dir = Backwards;
 }
 
 impl std::fmt::Display for LiveVars {

@@ -24,6 +24,9 @@ pub trait Fact: PartialEq + Clone {
     ) -> Vec<Self>
     where
         Self: std::marker::Sized;
+
+    /// The associated direction of the analysis
+    type Dir: Direction;
 }
 
 /// A direction of the analysis
@@ -115,7 +118,7 @@ impl<'a, T> Refy<'a, T> {
 /// * `in_fact` - The input fact for the block
 /// # Returns
 /// * Tuple of input facts for each instruction and the output fact for the block
-fn analyze_basic_block<T: Fact, D: Direction>(
+fn analyze_basic_block<T: Fact>(
     cfg: &Cfg,
     block_id: usize,
     mut res_in_facts: HashMap<u64, T>,
@@ -125,7 +128,7 @@ fn analyze_basic_block<T: Fact, D: Direction>(
     let mut fact = Refy::Ref(in_fact);
     let mut block_out = vec![];
     if let CfgNode::Block(block) = &cfg.blocks.get(&block_id).unwrap() {
-        D::local_iter(
+        T::Dir::local_iter(
             &mut block.instrs.iter().chain(block.terminator.as_ref()),
             &mut |instr| {
                 res_in_facts.insert(instr.0, fact.borrow(&block_out).clone());
@@ -187,7 +190,7 @@ fn broadcast_out_facts<T: Fact>(
 /// # Panics
 ///
 #[must_use]
-pub fn analyze<T: Fact, D: Direction>(
+pub fn analyze<T: Fact>(
     cfg: &Cfg,
     top: &T,
     restricted_set: Option<&[usize]>,
@@ -197,7 +200,7 @@ pub fn analyze<T: Fact, D: Direction>(
     let mut out_facts: HashMap<usize, Vec<T>> = HashMap::new();
     let mut res_in_facts: HashMap<u64, T> = HashMap::new();
     let mut worklist: Vec<usize> = Vec::new();
-    let adj_lst = D::get_adj_list(cfg);
+    let adj_lst = T::Dir::get_adj_list(cfg);
     in_facts.extend(cfg.blocks.keys().map(|k| (*k, top.clone())));
     worklist.extend(cfg.blocks.keys());
     in_facts.insert(CFG_START_ID, top.clone());
@@ -214,7 +217,7 @@ pub fn analyze<T: Fact, D: Direction>(
         let in_fact = in_facts.get(&block).unwrap();
         let out_fact;
         (res_in_facts, out_fact) =
-            analyze_basic_block::<T, D>(cfg, block, res_in_facts, in_fact, top);
+            analyze_basic_block(cfg, block, res_in_facts, in_fact, top);
         let add_neighbors = match out_facts.entry(block) {
             Entry::Occupied(o) => o.get() != &out_fact,
             Entry::Vacant(_) => true,
