@@ -2,7 +2,7 @@ use crate::{CFG_END_ID, CFG_START_ID};
 
 use super::{BasicBlock, Cfg, CfgEdgeTo, CfgNode};
 use bril_rs::Instruction;
-use std::collections::HashMap;
+use std::{any::TypeId, collections::HashMap};
 pub mod dominators;
 pub mod live_vars;
 pub mod loops;
@@ -48,21 +48,16 @@ pub trait Direction {
     );
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-/// Analysis direction
-pub enum Dir {
-    Forwards,
-    Backwards,
-}
-
 /// The result of an analysis
 #[allow(clippy::module_name_repetitions)]
 pub struct AnalysisResult<T: Fact> {
+    /// Map from instruction ID to input fact
     pub in_facts: HashMap<u64, T>,
+    /// Map from block ID to output fact
     pub block_out_facts: HashMap<usize, Vec<T>>,
 }
 
-impl<T: Fact> AnalysisResult<T> {
+impl<T: Fact + 'static> AnalysisResult<T> {
     /// Gets the "input" and "output" facts of a basic block
     /// "input" and "output" are relative to a forward analysis
     /// # Arguments
@@ -75,12 +70,11 @@ impl<T: Fact> AnalysisResult<T> {
         &'a self,
         block: &BasicBlock,
         block_id: usize,
-        dir: Dir,
     ) -> (&'a T, &'a [T]) {
         let mut it = block.instrs.iter().chain(block.terminator.as_ref());
         let instr = it.next().unwrap().0;
         let last = it.last().map_or(instr, |x| x.0);
-        if dir == Dir::Forwards {
+        if TypeId::of::<T::Dir>() == TypeId::of::<Forwards>() {
             (
                 self.in_facts.get(&instr).unwrap(),
                 self.block_out_facts.get(&block_id).unwrap(),

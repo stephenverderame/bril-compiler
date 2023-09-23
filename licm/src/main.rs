@@ -11,7 +11,7 @@ use cfg::{
         loops::{self, NaturalLoop},
         moveable_instrs::{get_loop_invariant_instrs, MoveableInstrs},
         reaching_defs::ReachingDefs,
-        AnalysisResult, Dir,
+        AnalysisResult,
     },
     BasicBlock, CfgEdgeTo, CfgNode,
 };
@@ -87,8 +87,7 @@ fn used_variables(
     let mut vars = HashSet::new();
     for n in lp.nodes.iter().chain(lp.exits.iter()) {
         if let CfgNode::Block(block) = &cfg.blocks[n] {
-            let (in_facts, _) =
-                reaching_defs.block_facts(block, *n, Dir::Forwards);
+            let (in_facts, _) = reaching_defs.block_facts(block, *n);
             vars = vars.union(&in_facts.definied_vars()).cloned().collect();
         }
     }
