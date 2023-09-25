@@ -1,0 +1,24 @@
+@main(a: int) {
+    v: int = const 10;
+    b: bool = lt v a;
+    br b .yes .no;
+.yes:
+    c: int = const 20;
+    d: int = const 50;
+    b: bool = lt c a;
+    br b .yes.yes .yes.no;
+.yes.yes:
+    c: int = const 30;
+    jmp .merge;
+.yes.no:
+    d: int = add d d;
+    jmp .merge;
+.no:
+    c: int = const 10;
+    a: int = const 5;
+    e: int = const 20;
+.merge:
+    print c;
+    print a;
+    print d;
+}

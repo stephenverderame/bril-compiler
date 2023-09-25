@@ -156,15 +156,16 @@ impl DomTree {
     /// * The dominance frontier of `block`
     #[must_use]
     pub fn dom_frontier(&self, block: usize, cfg: &Cfg) -> Vec<usize> {
+        use std::iter;
         let dominated =
             self.nodes[&block].dominated(&self.nodes, HashSet::new());
         let mut frontier = Vec::new();
-        for dom in &dominated {
+        for dom in dominated.iter().chain(iter::once(&block)) {
             let dom = *dom;
             let dom_succs = cfg.adj_lst[&dom].nodes();
             for succ in dom_succs {
                 if !dominated.contains(&succ) {
-                    frontier.push(dom);
+                    frontier.push(succ);
                 }
             }
         }

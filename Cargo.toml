@@ -10,4 +10,5 @@ members = [
     "lvn",
     "dce",
     "licm",
+    "ssa",
 ]

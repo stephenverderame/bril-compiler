@@ -3,6 +3,7 @@ use crate::{CFG_END_ID, CFG_START_ID};
 use super::{BasicBlock, Cfg, CfgEdgeTo, CfgNode};
 use bril_rs::Instruction;
 use std::{any::TypeId, collections::HashMap};
+pub mod defined_vars;
 pub mod dominators;
 pub mod live_vars;
 pub mod loops;

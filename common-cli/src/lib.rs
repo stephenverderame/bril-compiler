@@ -38,7 +38,6 @@ pub fn cli_args(_: TokenStream, item: TokenStream) -> TokenStream {
     }));
     for f in input.fields.iter() {
         struct_fields.extend(Into::<proc_macro::TokenStream>::into(quote! {
-            #[arg(long)]
             #f,
         }));
     }
