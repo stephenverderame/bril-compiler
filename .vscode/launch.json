@@ -12,6 +12,7 @@
             "args": [
                 "-f",
                 "${workspaceFolder}/debug.json",
+                "--out"
             ],
             "cwd": "${workspaceFolder}"
         }

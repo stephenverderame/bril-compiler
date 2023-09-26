@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bril_rs::{Code, Function, Instruction, Type, ValueOps};
 use cfg::{
@@ -9,7 +9,7 @@ use cfg::{
         live_vars::{self, LiveVars},
         AnalysisResult,
     },
-    CfgNode, CFG_START_ID,
+    BasicBlock, CfgEdgeTo, CfgNode, CFG_START_ID,
 };
 use common_cli::{cli_args, compiler_pass};
 
@@ -23,16 +23,18 @@ struct ExtraArgs {
 
 /// Invokes ssa conversion on the CFG
 #[compiler_pass(all_labels)]
-fn ssa(cfg: Cfg, args: &CLIArgs, f: &Function) -> Cfg {
+fn ssa(mut cfg: Cfg, args: &CLIArgs, f: &Function) -> Cfg {
     (if args.out {
-        cfg
+        safely_remove_phi(cfg)
     } else {
+        cfg = insert_new_start(cfg, f);
         let dom_tree = dominators::compute_dominators(&cfg);
         let base_names = f
             .args
             .iter()
             .map(|x| (x.name.clone(), x.name.clone()))
             .collect();
+
         rename_vars(
             add_phi_nodes(cfg, f, &dom_tree),
             CFG_START_ID,
@@ -89,6 +91,44 @@ fn add_phi_to_block(
             cfg.last_instr_id += 1;
         }
     }
+    cfg
+}
+
+/// To handle cases where the first block is also a loop header and it would
+/// have a phi node for a function argument, we insert a new block that simply
+/// copies each function argument into itself. Ie `x = id x` for each function
+/// argument `x`
+/// # Arguments
+/// * `cfg` - The cfg
+/// * `f` - The function
+fn insert_new_start(mut cfg: Cfg, f: &Function) -> Cfg {
+    let new_id = cfg.blocks.keys().max().unwrap() + 1;
+    let mut instrs = vec![];
+    for arg in &f.args {
+        instrs.push((
+            cfg.last_instr_id,
+            Instruction::Value {
+                op: ValueOps::Id,
+                args: vec![arg.name.clone()],
+                dest: arg.name.clone(),
+                funcs: vec![],
+                labels: vec![],
+                pos: None,
+                op_type: arg.arg_type.clone(),
+            },
+        ));
+        cfg.last_instr_id += 1;
+    }
+    cfg.blocks.insert(
+        new_id,
+        CfgNode::Block(BasicBlock {
+            instrs,
+            terminator: None,
+        }),
+    );
+    cfg.adj_lst
+        .insert(new_id, cfg.adj_lst[&CFG_START_ID].clone());
+    cfg.adj_lst.insert(CFG_START_ID, CfgEdgeTo::Next(new_id));
     cfg
 }
 
@@ -402,6 +442,82 @@ fn find_vars(
         }
     }
     vars
+}
+
+/// Removes phi nodes from the cfg
+/// Inserts copies in all predecessors to the phi node to ensure that the
+/// cfg is still in SSA form
+fn safely_remove_phi(mut cfg: Cfg) -> Cfg {
+    let keys: Vec<_> = cfg.blocks.keys().copied().collect();
+    for blk_id in keys {
+        if let CfgNode::Block(blk) = cfg.blocks.get_mut(&blk_id).unwrap() {
+            let mut to_remove = HashSet::new();
+            let mut copies_to_add: HashMap<_, Vec<_>> = HashMap::new();
+            for (instr_id, instr) in blk.instrs.iter() {
+                if let Instruction::Value {
+                    op: ValueOps::Phi,
+                    dest,
+                    args,
+                    labels,
+                    op_type,
+                    ..
+                } = &instr
+                {
+                    to_remove.insert(*instr_id);
+                    for (lbl, arg) in labels.iter().zip(args.iter()) {
+                        let pred_id = lbl
+                            .strip_prefix("block.")
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap();
+                        copies_to_add.entry(pred_id).or_default().push((
+                            dest.clone(),
+                            arg.clone(),
+                            op_type.clone(),
+                            blk_id,
+                        ));
+                    }
+                }
+            }
+            blk.instrs
+                .retain(|(instr_id, _)| !to_remove.contains(instr_id));
+            cfg = insert_copies(cfg, copies_to_add);
+        }
+    }
+    cfg
+}
+
+/// Inserts copies into the cfg so that phi nodes can be safely removed
+/// # Arguments
+/// * `cfg` - The cfg
+/// * `copies_to_add` - A map from block id to a vector of tuples of
+/// (dest, src, type, original block id)
+/// # Returns
+/// * The cfg with copies inserted
+fn insert_copies(
+    mut cfg: Cfg,
+    copies_to_add: HashMap<usize, Vec<(String, String, Type, usize)>>,
+) -> Cfg {
+    for (blk, copies) in copies_to_add {
+        if let CfgNode::Block(blk) = cfg.blocks.get_mut(&blk).unwrap() {
+            for (dest, src, op_type, _) in copies {
+                blk.instrs.push((
+                    cfg.last_instr_id,
+                    Instruction::Value {
+                        op: ValueOps::Id,
+                        dest,
+                        args: vec![src],
+                        funcs: vec![],
+                        labels: vec![],
+                        pos: None,
+                        op_type,
+                    },
+                ));
+                cfg.last_instr_id += 1;
+            }
+        }
+    }
+    cfg
 }
 
 fn ssa_post(instrs: Vec<Code>) -> Vec<Code> {

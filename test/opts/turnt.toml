@@ -35,3 +35,6 @@ output.domtree = "-"
 [envs.ssa]
 command = "bril2json < {filename} | cargo run --bin ssa | brili {args}"
 return_code = 0
+
+[envs.ssa-roundtrip]
+command = "bril2json < {filename} | cargo run --bin ssa | cargo run --bin ssa -- --out | brili {args}"

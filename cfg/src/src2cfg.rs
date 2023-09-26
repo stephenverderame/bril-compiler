@@ -250,9 +250,11 @@ impl Cfg {
         Self {
             blocks,
             adj_lst,
-            labels: Self::construct_labels_map(labels_map),
+            block_labels: Self::construct_labels_map(labels_map.clone()),
+            labels: labels_map,
             last_instr_id,
         }
+        .clean_labels()
         .clean()
     }
 
@@ -310,6 +312,47 @@ impl Cfg {
             }
             _ => Some(node),
         }
+    }
+
+    /// Cleans the labels in the CFG for each body instruction (non terminator)
+    /// by replacing a label to a jump instruction with a label to the next real
+    /// instruction
+    ///
+    /// Basically, this makes sure no body instruction uses labels that will be
+    /// removed by `clean`
+    fn clean_labels(mut self) -> Self {
+        use super::cfg2src::BLOCK_LABEL_BASE;
+        let mut new_labels_map = HashMap::new();
+        for (blk_id, blk) in &self.blocks {
+            if let CfgNode::Block(blk) = blk {
+                let mut blk_new_labels = HashMap::new();
+                for (instr_id, instr) in &blk.instrs {
+                    if let Some(lbls) = instr.get_labels() {
+                        let mut new_labels = vec![];
+                        for lbl in lbls {
+                            let id = self.labels.get(lbl).copied().unwrap();
+                            let id = self.next_real_node(id, None);
+                            let new_label = id.map_or(lbl.clone(), |id| {
+                                format!("{BLOCK_LABEL_BASE}{id}")
+                            });
+                            new_labels.push(new_label);
+                        }
+                        blk_new_labels.insert(*instr_id, new_labels);
+                    }
+                }
+                new_labels_map.insert(*blk_id, blk_new_labels);
+            }
+        }
+        for (blk, blk_labels) in new_labels_map {
+            if let Some(CfgNode::Block(blk)) = self.blocks.get_mut(&blk) {
+                for (instr_id, instr) in &mut blk.instrs {
+                    if let Some(lbls) = blk_labels.get(instr_id) {
+                        instr.set_labels(lbls.clone());
+                    }
+                }
+            }
+        }
+        self
     }
 
     /// Removes unreachable nodes, empty blocks, and blocks that just contain jumps

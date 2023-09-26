@@ -84,7 +84,8 @@ impl CfgEdgeTo {
 pub struct Cfg {
     pub blocks: BTreeMap<usize, CfgNode>,
     pub adj_lst: HashMap<usize, CfgEdgeTo>,
-    pub labels: HashMap<usize, Vec<String>>,
+    pub block_labels: HashMap<usize, Vec<String>>,
+    pub labels: HashMap<String, usize>,
     pub last_instr_id: u64,
 }
 

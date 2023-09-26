@@ -2,7 +2,7 @@ use super::*;
 use std::collections::{BTreeSet, HashSet, VecDeque};
 
 /// The base name (non-unique) of a block label.
-const BLOCK_LABEL_BASE: &str = "block.";
+pub const BLOCK_LABEL_BASE: &str = "block.";
 
 /// Returns true if current block needs a label.
 fn need_label(

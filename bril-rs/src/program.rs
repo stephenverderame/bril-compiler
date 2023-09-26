@@ -299,6 +299,38 @@ impl Instruction {
         }
     }
 
+    /// A helper function to extract the labels if they exist from an instruction
+    #[must_use]
+    pub fn get_labels_mut(&mut self) -> Option<&mut Vec<String>> {
+        match self {
+            Self::Constant { .. } => None,
+            Self::Value { labels, .. } | Self::Effect { labels, .. } => {
+                Some(labels)
+            }
+        }
+    }
+
+    /// A helper function to extract the labels if they exist from an instruction
+    #[must_use]
+    pub fn get_labels(&self) -> Option<&[String]> {
+        match self {
+            Self::Constant { .. } => None,
+            Self::Value { labels, .. } | Self::Effect { labels, .. } => {
+                Some(labels)
+            }
+        }
+    }
+
+    /// A helper function to set the labels if they exist from an instruction
+    pub fn set_labels(&mut self, labels: Vec<String>) {
+        match self {
+            Self::Constant { .. } => {}
+            Self::Value { labels: l, .. } | Self::Effect { labels: l, .. } => {
+                *l = labels;
+            }
+        }
+    }
+
     /// A helper function to determine if the instruction is generally pure
     /// A division instruction is generally pure, for example but can have side
     /// effects (divide by zero)
