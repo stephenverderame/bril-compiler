@@ -200,6 +200,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "is-ssa"
+version = "0.1.0"
+dependencies = [
+ "atty",
+ "bril-rs",
+ "cfg",
+ "clap",
+ "common-cli",
+ "serde_json",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
