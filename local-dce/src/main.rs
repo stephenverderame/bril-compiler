@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 struct ExtraArgs {}
 
 /// Invokes local dead code elimination on the cfg
-#[compiler_pass(true)]
+#[compiler_pass]
 fn dce(mut cfg: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
     for block in &mut cfg.blocks.iter_mut().filter_map(|(_, node)| match node {
         CfgNode::Block(block) => Some(block),

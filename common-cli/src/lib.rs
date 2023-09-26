@@ -48,6 +48,42 @@ pub fn cli_args(_: TokenStream, item: TokenStream) -> TokenStream {
     output
 }
 
+struct CompilerPassArgs {
+    /// Whether to use basic blocks for the analysis or not
+    block_cfg: bool,
+    /// Whether to generate all labels or not
+    all_labels: bool,
+}
+
+impl Default for CompilerPassArgs {
+    fn default() -> Self {
+        Self {
+            block_cfg: true,
+            all_labels: false,
+        }
+    }
+}
+
+fn parse_compiler_pass_args(arr: TokenStream) -> CompilerPassArgs {
+    let mut args: CompilerPassArgs = Default::default();
+    for tok in arr {
+        match tok {
+            proc_macro::TokenTree::Ident(ident)
+                if ident.to_string() == "instruction_cfg" =>
+            {
+                args.block_cfg = false;
+            }
+            proc_macro::TokenTree::Ident(ident)
+                if ident.to_string() == "all_labels" =>
+            {
+                args.all_labels = true;
+            }
+            _ => (),
+        }
+    }
+    args
+}
+
 /// A compiler pass that decorates a function that takes in a `Cfg` and `&CLIArgs`
 /// and returns a `Cfg`
 ///
@@ -55,9 +91,35 @@ pub fn cli_args(_: TokenStream, item: TokenStream) -> TokenStream {
 /// is expected to exist and will be called after the decorated function. It
 /// is expected to take in a `Vec<Code>` and return a `Vec<Code>`
 /// # Arguments
-/// * `default_use_cfg` - Whether to use basic blocks for the analysis or not
-///     if not specified in the CLI args
-///     Must be a boolean literal
+/// * `all_labels` - Whether to generate all labels or not
+/// * `instruction_cfg` - Whether to use instruction-level blocks for the analysis
+/// # Example
+///
+/// ```
+/// #[compiler_pass(all_labels, instruction_cfg)]
+/// fn my_pass(graph: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
+///    // ...
+///    graph
+/// }
+/// ```
+///
+///
+/// ```
+/// #[compiler_pass(instruction_cfg)]
+/// fn my_pass(graph: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
+///    // ...
+///    graph
+/// }
+/// ```
+///
+///
+/// ```
+/// #[compiler_pass]
+/// fn my_pass(graph: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
+///    // ...
+///    graph
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn compiler_pass(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
@@ -65,7 +127,9 @@ pub fn compiler_pass(attr: TokenStream, item: TokenStream) -> TokenStream {
     let postprocess_name =
         Ident::new(&format!("{}_post", name), Span::call_site());
     let name = Ident::new(&name, Span::call_site());
-    let default_use_cfg = parse_macro_input!(attr as syn::LitBool).value;
+    let pass_args = parse_compiler_pass_args(attr);
+    let block_cfg = pass_args.block_cfg;
+    let all_labels = pass_args.all_labels;
     let output = quote! {
         use atty::Stream;
         use bril_rs::{load_program, load_program_from_read, Program};
@@ -93,8 +157,8 @@ pub fn compiler_pass(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         fn transform_prog(mut prog: Program, args: &CLIArgs) -> Program {
             for f in &mut prog.functions {
-                let cfg = Cfg::from(f, !args.use_blocks.unwrap_or(#default_use_cfg));
-                let new_body = #name(cfg, args, f).to_src();
+                let cfg = Cfg::from(f, !args.use_blocks.unwrap_or(#block_cfg));
+                let new_body = #name(cfg, args, f).to_src(#all_labels);
                 f.instrs = #postprocess_name(new_body);
             }
             prog

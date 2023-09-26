@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use bril_rs::{Code, Function, Instruction, Type};
+use bril_rs::{Code, Function, Instruction, Type, ValueOps};
 use cfg::{
     analysis::{
         analyze,
@@ -22,9 +22,27 @@ struct ExtraArgs {
 }
 
 /// Invokes global dead code elimination on the cfg
-#[compiler_pass(true)]
+#[compiler_pass(all_labels)]
 fn ssa(cfg: Cfg, args: &CLIArgs, f: &Function) -> Cfg {
-    (if args.out { cfg } else { add_phi_nodes(cfg, f) }).clean()
+    (if args.out {
+        cfg
+    } else {
+        let dom_tree = dominators::compute_dominators(&cfg);
+        let base_names = f
+            .args
+            .iter()
+            .map(|x| (x.name.clone(), x.name.clone()))
+            .collect();
+        rename_vars(
+            add_phi_nodes(cfg, f, &dom_tree),
+            CFG_START_ID,
+            HashMap::new(),
+            &mut HashMap::new(),
+            base_names,
+            &dom_tree,
+        )
+    })
+    .clean()
 }
 
 /// Inserts a phi node as the first instruction of a block if one with the
@@ -36,18 +54,33 @@ fn ssa(cfg: Cfg, args: &CLIArgs, f: &Function) -> Cfg {
 /// * `phi` - The phi node to insert
 /// # Returns
 /// * The cfg with the phi node inserted
-fn add_phi_to_block(mut cfg: Cfg, block: usize, phi: Instruction) -> Cfg {
+fn add_phi_to_block(
+    mut cfg: Cfg,
+    block: usize,
+    phi: Instruction,
+    live_vars: &mut AnalysisResult<LiveVars>,
+    defined_vars: &mut AnalysisResult<DefinedVars>,
+) -> Cfg {
     if let Some(CfgNode::Block(block)) = cfg.blocks.get_mut(&block) {
         if let Some(existing_pos) = block
             .instrs
             .iter()
             .position(|(_, instr)| instr.get_dest() == phi.get_dest())
         {
-            block.instrs[existing_pos] = (cfg.last_instr_id, phi);
+            block.instrs[existing_pos].1 = phi;
         } else {
+            let prev_block_starter = block
+                .instrs
+                .iter()
+                .chain(block.terminator.as_ref())
+                .next()
+                .unwrap()
+                .0;
             block.instrs.insert(0, (cfg.last_instr_id, phi));
+            live_vars.duplicate_facts(prev_block_starter, cfg.last_instr_id);
+            defined_vars.duplicate_facts(prev_block_starter, cfg.last_instr_id);
+            cfg.last_instr_id += 1;
         }
-        cfg.last_instr_id += 1;
     }
     cfg
 }
@@ -101,16 +134,20 @@ fn get_ssa_pred_labels(
 /// * `f` - The function
 /// # Returns
 /// * The cfg with phi nodes inserted
-fn add_phi_nodes(mut cfg: Cfg, f: &Function) -> Cfg {
+fn add_phi_nodes(
+    mut cfg: Cfg,
+    f: &Function,
+    dom_tree: &dominators::DomTree,
+) -> Cfg {
     let mut vars = find_vars(&cfg, f);
-    let dom_tree = dominators::compute_dominators(&cfg);
     let mut added_phi_nodes: HashMap<(String, usize), Vec<String>> =
         HashMap::new();
     let preds = cfg.preds();
     let mut changed = true;
     let empty_preds = vec![];
-    let live_vars = analyze(&cfg, &live_vars::LiveVars::top(), None);
-    let defined_vars = analyze(&cfg, &defined_vars::DefinedVars::top(f), None);
+    let mut live_vars = analyze(&cfg, &live_vars::LiveVars::top(), None);
+    let mut defined_vars =
+        analyze(&cfg, &defined_vars::DefinedVars::top(f), None);
     while changed {
         changed = false;
         for (var, def_blocks) in vars.iter_mut() {
@@ -144,7 +181,13 @@ fn add_phi_nodes(mut cfg: Cfg, f: &Function) -> Cfg {
                             pos: None,
                             op_type: def_type.clone(),
                         };
-                        cfg = add_phi_to_block(cfg, frontier_blk, phi);
+                        cfg = add_phi_to_block(
+                            cfg,
+                            frontier_blk,
+                            phi,
+                            &mut live_vars,
+                            &mut defined_vars,
+                        );
                         changed = true;
                     }
                 }
@@ -152,6 +195,161 @@ fn add_phi_nodes(mut cfg: Cfg, f: &Function) -> Cfg {
         }
     }
     cfg
+}
+
+/// Renames variables in a block to be unique
+/// # Arguments
+/// * `cfg` - The cfg
+/// * `block_id` - The block to rename variables in
+/// * `cur_names` - A map from variable name to the current index of that
+/// variable name. The latest variable name will be `var.{cur_index}`
+/// if a mapping is present, otherwise it will be `var`
+/// * `latest_names` - A map from variable name to the globally latest index of that
+/// * `last_block_id` - The id of the block that was last visited and is calling
+/// this function
+/// * `base_names` - A map from variable name to the original name of the
+/// variable.
+fn rename_vars(
+    mut cfg: Cfg,
+    block_id: usize,
+    mut cur_names: HashMap<String, u64>,
+    latest_names: &mut HashMap<String, u64>,
+    mut base_names: HashMap<String, String>,
+    dom_tree: &dominators::DomTree,
+) -> Cfg {
+    if let CfgNode::Block(block) = cfg.blocks.get_mut(&block_id).unwrap() {
+        for (_, instr) in
+            block.instrs.iter_mut().chain(block.terminator.as_mut())
+        {
+            (base_names, cur_names) =
+                rename_instr(instr, base_names, cur_names, latest_names);
+        }
+    }
+    for succ in cfg.adj_lst[&block_id].nodes() {
+        base_names =
+            rename_phi_args(&mut cfg, succ, block_id, base_names, &cur_names);
+    }
+    for nxt in dom_tree.immediately_dominated(block_id) {
+        cfg = rename_vars(
+            cfg,
+            nxt,
+            cur_names.clone(),
+            latest_names,
+            base_names.clone(),
+            dom_tree,
+        );
+    }
+    cfg
+}
+
+/// Renames variables in an instruction to be unique
+/// # Arguments
+/// * `instr` - The instruction to rename variables in
+/// * `last_block_id` - The id of the block that was last visited and is calling
+/// this function
+/// * `base_names` - A map from variable name to the original name of the
+/// variable.
+/// * `cur_names` - A map from variable name to the current index of that
+/// variable name. The latest variable name will be `var.{cur_index}`
+/// if a mapping is present, otherwise it will be `var`
+/// * `latest_names` - A map from variable name to the globally latest index of that
+/// variable name. The latest variable name will be `var.{latest_index}`
+/// # Returns
+/// * A tuple of the updated `base_names` and `cur_names`
+fn rename_instr(
+    instr: &mut Instruction,
+    mut base_names: HashMap<String, String>,
+    mut cur_names: HashMap<String, u64>,
+    latest_names: &mut HashMap<String, u64>,
+) -> (HashMap<String, String>, HashMap<String, u64>) {
+    // handle args
+    if let Instruction::Value {
+        op: ValueOps::Phi, ..
+    } = instr
+    {
+        // phi nodes handled separately
+    } else if let Some(args) = instr.get_args_mut() {
+        for arg in args {
+            let base_arg = base_names.get(arg).unwrap_or(arg).clone();
+            base_names.remove(arg);
+            let new_suffix = cur_names
+                .get(&base_arg)
+                .copied()
+                .map(|x| format!(".{x}"))
+                .unwrap_or_default();
+            *arg = format!("{base_arg}{new_suffix}");
+            base_names.insert(arg.clone(), base_arg);
+        }
+    }
+    // handle dest
+    if let Some(dest) = instr.get_dest_mut() {
+        let base_dest = base_names.get(dest).unwrap_or(dest).clone();
+        base_names.remove(dest);
+        let new_name_suffix =
+            latest_names.entry(base_dest.clone()).or_default();
+        *dest = format!("{base_dest}.{new_name_suffix}");
+        *cur_names
+            .entry(base_dest.clone())
+            .or_insert(*new_name_suffix) = *new_name_suffix;
+        *new_name_suffix += 1;
+        base_names.insert(dest.clone(), base_dest);
+    }
+    (base_names, cur_names)
+}
+
+/// Renames the arguments of phi nodes in a block to be unique
+/// # Arguments
+/// * `cfg` - The cfg
+/// * `block_id` - The block to rename variables in
+/// * `pred_block_id` - The id of the predecessor block that was last visited
+/// * `base_names` - A map from variable name to the original name of the
+/// variable.
+/// * `latest_names` - A map from variable name to the latest index of that
+/// variable name. The latest variable name will be `var.{latest_index}`
+/// if a mapping is present, otherwise it will be `var`
+/// # Returns
+/// * A tuple of the updated `base_names` and `latest_names`
+fn rename_phi_args(
+    cfg: &mut Cfg,
+    block_id: usize,
+    pred_block_id: usize,
+    mut base_names: HashMap<String, String>,
+    latest_names: &HashMap<String, u64>,
+) -> HashMap<String, String> {
+    if let CfgNode::Block(block) = cfg.blocks.get_mut(&block_id).unwrap() {
+        for (_, instr) in block.instrs.iter_mut() {
+            // handle phi nodes -> only replace argument with the last block as
+            // the corresponding label
+            if let Instruction::Value {
+                op: ValueOps::Phi,
+                labels,
+                args,
+                ..
+            } = instr
+            {
+                let pos = labels
+                    .iter()
+                    .position(|x| x == &format!("block.{pred_block_id}"));
+                if let Some(pos) = pos {
+                    let base_name = base_names
+                        .get(&args[pos])
+                        .unwrap_or(&args[pos])
+                        .clone();
+                    base_names.remove(&args[pos]);
+                    args[pos] = format!(
+                        "{base_name}{}",
+                        latest_names
+                            .get(&base_name)
+                            .copied()
+                            .map(|x| format!(".{x}"))
+                            .unwrap_or_default()
+                    );
+                    base_names.insert(args[pos].clone(), base_name.to_string());
+                }
+            }
+        }
+    }
+    base_names
 }
 
 /// Gets a map from variable name to the blocks that define it

@@ -182,11 +182,14 @@ fn fix_jumps(
 }
 
 /// Converts a CFG to a vector of Bril instructions and labels.
+/// # Arguments
+/// * `cfg` - The CFG
+/// * `all_labels` - If true, all blocks will be labeled
 ///
 /// # Panics
 /// Panics if the CFG is malformed.
 #[must_use]
-pub fn to_src(cfg: &Cfg) -> Vec<Code> {
+pub fn to_src(cfg: &Cfg, all_labels: bool) -> Vec<Code> {
     let mut src = Vec::new();
     let mut visited = HashSet::new();
     visited.insert(CFG_START_ID);
@@ -198,7 +201,7 @@ pub fn to_src(cfg: &Cfg) -> Vec<Code> {
         visited.insert(id);
         let next_code_block = order.front();
         if let Some(CfgNode::Block(block)) = cfg.blocks.get(&id) {
-            if need_label(cfg, last_block_id, &preds, id) {
+            if all_labels || need_label(cfg, last_block_id, &preds, id) {
                 // we relabel everything to avoid potential conflicts
                 src.push(Code::Label {
                     pos: None,
@@ -212,7 +215,7 @@ pub fn to_src(cfg: &Cfg) -> Vec<Code> {
             last_block_id = id;
         }
     }
-    if need_label(cfg, last_block_id, &preds, CFG_END_ID) {
+    if all_labels || need_label(cfg, last_block_id, &preds, CFG_END_ID) {
         src.push(Code::Label {
             pos: None,
             label: format!("{BLOCK_LABEL_BASE}{CFG_END_ID}"),
@@ -281,8 +284,11 @@ fn order_blocks(
 }
 
 impl Cfg {
+    /// Converts a CFG to a vector of Bril instructions and labels.
+    /// # Arguments
+    /// * `all_labels` - If true, all blocks will be labeled
     #[must_use]
-    pub fn to_src(&self) -> Vec<Code> {
-        to_src(self)
+    pub fn to_src(&self, all_labels: bool) -> Vec<Code> {
+        to_src(self, all_labels)
     }
 }

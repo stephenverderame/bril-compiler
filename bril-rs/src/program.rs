@@ -348,6 +348,17 @@ impl Instruction {
             Self::Value { args, .. } | Self::Effect { args, .. } => Some(args),
         }
     }
+
+    /// A helper function to extract the destination variable if it exists from an instruction
+    #[must_use]
+    pub fn get_dest_mut(&mut self) -> Option<&mut String> {
+        match self {
+            Self::Constant { dest, .. } | Self::Value { dest, .. } => {
+                Some(dest)
+            }
+            Self::Effect { .. } => None,
+        }
+    }
 }
 
 impl Display for Instruction {

@@ -22,7 +22,7 @@ use rand::Rng;
 struct ExtraArgs {}
 
 /// Invokes global dead code elimination on the cfg
-#[compiler_pass(true)]
+#[compiler_pass]
 fn licm(mut cfg: Cfg, _args: &CLIArgs, f: &bril_rs::Function) -> Cfg {
     let domtree = dominators::compute_dominators(&cfg);
     let loops = loops::find_natural_loops(&cfg, &domtree);

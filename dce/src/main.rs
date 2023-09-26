@@ -9,7 +9,7 @@ use common_cli::{cli_args, compiler_pass};
 struct ExtraArgs {}
 
 /// Invokes global dead code elimination on the cfg
-#[compiler_pass(true)]
+#[compiler_pass]
 fn dce(mut cfg: Cfg, _args: &CLIArgs, _f: &bril_rs::Function) -> Cfg {
     let mut changed = true;
     while changed {

@@ -1,3 +1,4 @@
+# ARGS: 20
 @main(a: int) {
     v: int = const 10;
     b: bool = lt v a;

@@ -87,6 +87,15 @@ impl<T: Fact + 'static> AnalysisResult<T> {
             )
         }
     }
+
+    /// Sets the input facts for instruction `src_id` to the input fact
+    /// for instruction `dst_id`
+    /// # Panics
+    /// Panics if `src_id` does not exist
+    pub fn duplicate_facts(&mut self, src_id: u64, dst_id: u64) {
+        let src_fact = self.in_facts.get(&src_id).unwrap().clone();
+        self.in_facts.insert(dst_id, src_fact);
+    }
 }
 
 /// A reference or an index into an array
