@@ -21,7 +21,7 @@ struct ExtraArgs {
     out: bool,
 }
 
-/// Invokes global dead code elimination on the cfg
+/// Invokes ssa conversion on the CFG
 #[compiler_pass(all_labels)]
 fn ssa(cfg: Cfg, args: &CLIArgs, f: &Function) -> Cfg {
     (if args.out {
@@ -62,10 +62,17 @@ fn add_phi_to_block(
     defined_vars: &mut AnalysisResult<DefinedVars>,
 ) -> Cfg {
     if let Some(CfgNode::Block(block)) = cfg.blocks.get_mut(&block) {
-        if let Some(existing_pos) = block
-            .instrs
-            .iter()
-            .position(|(_, instr)| instr.get_dest() == phi.get_dest())
+        if let Some(existing_pos) =
+            block.instrs.iter().position(|(_, instr)| {
+                matches!(
+                    instr,
+                    Instruction::Value {
+                        op: ValueOps::Phi,
+                        dest,
+                        ..
+                    } if dest == &phi.get_dest().unwrap()
+                )
+            })
         {
             block.instrs[existing_pos].1 = phi;
         } else {
@@ -103,11 +110,12 @@ fn get_ssa_pred_labels(
     cfg: &Cfg,
     var: &str,
     frontier_blk: usize,
+    f: &Function,
 ) -> Vec<String> {
     preds[&frontier_blk]
         .iter()
-        .filter_map(|blk| {
-            if let CfgNode::Block(block) = &cfg.blocks[blk] {
+        .filter_map(|blk| match &cfg.blocks[blk] {
+            CfgNode::Block(block) => {
                 if live_vars.block_facts(block, *blk).0.is_live_out(var)
                     && defined_vars
                         .block_facts(block, *blk)
@@ -119,9 +127,11 @@ fn get_ssa_pred_labels(
                 } else {
                     None
                 }
-            } else {
-                None
             }
+            CfgNode::Start if f.args.iter().any(|x| x.name == var) => {
+                Some(format!("block.{CFG_START_ID}"))
+            }
+            _ => None,
         })
         .collect()
 }
@@ -151,7 +161,8 @@ fn add_phi_nodes(
     while changed {
         changed = false;
         for (var, def_blocks) in vars.iter_mut() {
-            for (def_blk, def_type) in def_blocks {
+            let mut new_def_blks = vec![];
+            for (def_blk, def_type) in def_blocks.iter() {
                 for frontier_blk in dom_tree.dom_frontier(*def_blk, &cfg) {
                     let existing_phi = added_phi_nodes
                         .get(&(var.to_string(), frontier_blk))
@@ -163,7 +174,15 @@ fn add_phi_nodes(
                         &cfg,
                         var,
                         frontier_blk,
+                        f,
                     );
+                    if existing_phi.is_empty()
+                        && !def_blocks.iter().any(|&(id, _)| id == frontier_blk)
+                    {
+                        // adding a brand new phi node
+                        // need to make sure this block is a def block of the var
+                        new_def_blks.push((frontier_blk, def_type.clone()));
+                    }
                     if existing_phi != &pred_labels {
                         added_phi_nodes.insert(
                             (var.to_string(), frontier_blk),
@@ -192,6 +211,9 @@ fn add_phi_nodes(
                     }
                 }
             }
+            // update the set of blocks defining the variable
+            // after adding a new phi node
+            def_blocks.extend(new_def_blks);
         }
     }
     cfg

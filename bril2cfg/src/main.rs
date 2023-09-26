@@ -14,6 +14,7 @@ use std::fs::File;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
+#[allow(clippy::struct_excessive_bools)]
 struct CLIArgs {
     /// The optional file to read from, if not specified a bril program
     /// is expected on stdin
@@ -37,6 +38,11 @@ struct CLIArgs {
     /// Specify this flag to display loops in the CFG
     #[arg(long, default_value_t = false)]
     loops: bool,
+
+    /// When specified, this flag enables printing of block names for each
+    /// block
+    #[arg(long, default_value_t = false)]
+    name_blocks: bool,
 }
 
 /// # bril2cfg
@@ -98,8 +104,13 @@ fn print_dot(cfg: &Cfg, fn_name: &str, fn_args: &str, args: &CLIArgs) {
     for (i, node) in &cfg.blocks {
         if *i != CFG_END_ID {
             let (header, footer) = df_res_str.get(i).unwrap_or(&empty);
+            let name = if args.name_blocks {
+                format!(".block.{i}:\\n")
+            } else {
+                String::new()
+            };
             println!(
-                "\t\t{fn_name}_{i} [label=\"{header}{node}{footer}\", shape=\"rectangle\", style=\"rounded\"];"
+                "\t\t{fn_name}_{i} [label=\"{name}{header}{node}{footer}\", shape=\"rectangle\", style=\"rounded\"];"
             );
         }
     }

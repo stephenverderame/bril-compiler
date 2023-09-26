@@ -190,7 +190,14 @@ fn fix_jumps(
 /// Panics if the CFG is malformed.
 #[must_use]
 pub fn to_src(cfg: &Cfg, all_labels: bool) -> Vec<Code> {
-    let mut src = Vec::new();
+    let mut src = if all_labels {
+        vec![Code::Label {
+            pos: None,
+            label: format!("{BLOCK_LABEL_BASE}{CFG_START_ID}"),
+        }]
+    } else {
+        Vec::new()
+    };
     let mut visited = HashSet::new();
     visited.insert(CFG_START_ID);
     let preds = cfg.preds();

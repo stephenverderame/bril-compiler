@@ -176,9 +176,9 @@ impl CfgNode {
                 Self::fmt_call(Some(dest.to_string()), func_0, args, f)
             }
             ValueOps::Phi => {
-                writeln!(f, "{dest} := phi {{")?;
+                write!(f, "{dest} := phi {{\\n")?;
                 for (lbl, arg) in labels.iter().zip(args.iter()) {
-                    writeln!(f, "   | {lbl} => {arg},")?;
+                    write!(f, "   | {lbl} => {arg},\\n")?;
                 }
                 write!(f, "}}")
             }
