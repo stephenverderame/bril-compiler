@@ -11,7 +11,9 @@ use cfg::{
     },
     BasicBlock, CfgEdgeTo, CfgNode, CFG_START_ID,
 };
+use coalesce::InterferenceGraph;
 use common_cli::{cli_args, compiler_pass};
+mod coalesce;
 
 #[cli_args]
 struct ExtraArgs {
@@ -19,13 +21,31 @@ struct ExtraArgs {
     /// into SSA form
     #[arg(long, short, default_value_t = false)]
     out: bool,
+
+    /// Pass this flag to show the interference graph
+    #[arg(long, default_value_t = false)]
+    show_ig: bool,
+
+    /// Pass this flag to show the interference graph after coalescing
+    #[arg(long, default_value_t = false)]
+    show_coalesced_ig: bool,
 }
 
 /// Invokes ssa conversion on the CFG
 #[compiler_pass(all_labels)]
 fn ssa(mut cfg: Cfg, args: &CLIArgs, f: &Function) -> Cfg {
     (if args.out {
-        safely_remove_phi(cfg)
+        cfg = safely_remove_phi(cfg);
+        let lv = analyze(&cfg, &live_vars::LiveVars::top(), None);
+        let mut ig = InterferenceGraph::new(&cfg, &lv, &f.args);
+        if args.show_ig {
+            println!("{ig:?}");
+        }
+        ig = ig.coalesce_all();
+        if args.show_coalesced_ig {
+            println!("{ig:?}");
+        }
+        rewrite_vars(cfg, &ig)
     } else {
         cfg = insert_new_start(cfg, f);
         let dom_tree = dominators::compute_dominators(&cfg);
@@ -520,6 +540,36 @@ fn insert_copies(
     cfg
 }
 
-fn ssa_post(instrs: Vec<Code>) -> Vec<Code> {
+/// Rewrites variables and arguments in the cfg to use the coalesced
+/// variable name
+fn rewrite_vars(mut cfg: Cfg, ig: &InterferenceGraph) -> Cfg {
+    for blk in cfg.blocks.values_mut() {
+        if let CfgNode::Block(blk) = blk {
+            for (_, instr) in
+                blk.instrs.iter_mut().chain(blk.terminator.as_mut())
+            {
+                if let Some(dest) = instr.get_dest_mut() {
+                    *dest = ig.get_canonical_name(dest);
+                }
+                if let Some(args) = instr.get_args_mut() {
+                    for arg in args {
+                        *arg = ig.get_canonical_name(arg);
+                    }
+                }
+            }
+        }
+    }
+    cfg
+}
+
+fn ssa_post(mut instrs: Vec<Code>) -> Vec<Code> {
+    instrs.retain(|x| {
+        !matches!(x, Code::Instruction(Instruction::Value {
+        op: ValueOps::Id,
+        dest,
+        args,
+        ..
+    }) if args.len() == 1 && dest == &args[0])
+    });
     instrs
 }
