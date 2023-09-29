@@ -1,0 +1,98 @@
+digraph {
+	subgraph cluster_abs {
+		label="abs(a: int)";
+		rankdir="TB";
+		abs_0 [label="START", shape="rectangle", style="rounded"];
+		abs_2 [label="zero := 0\nis_neg := a < zero\nif is_neg", shape="rectangle", style="rounded"];
+		abs_3 [label="neg_one := -1\na := a * neg_one", shape="rectangle", style="rounded"];
+		abs_4 [label="return a", shape="rectangle", style="rounded"];
+
+		abs_0 -> abs_2;
+		abs_2 -> abs_3 [label="T"];
+		abs_2 -> abs_4 [label="F"];
+		abs_3 -> abs_4;
+	}
+	subgraph cluster_mod {
+		label="mod(a: int, b: int)";
+		rankdir="TB";
+		mod_0 [label="START", shape="rectangle", style="rounded"];
+		mod_2 [label="q := a / b\naq := b * q\nmod := a - aq\nreturn mod", shape="rectangle", style="rounded"];
+
+		mod_0 -> mod_2;
+	}
+	subgraph cluster_gcd {
+		label="gcd(a: int, b: int)";
+		rankdir="TB";
+		gcd_0 [label="START", shape="rectangle", style="rounded"];
+		gcd_2 [label="mod := mod(a, b)\nzero := 0\nis_term := mod == zero\nif is_term", shape="rectangle", style="rounded"];
+		gcd_3 [label="a := b\nb := mod", shape="rectangle", style="rounded"];
+		gcd_4 [label="return b", shape="rectangle", style="rounded"];
+		subgraph cluster_gcd_loop2 {
+			label="";
+			color="blue";
+			style="rounded";
+			bgcolor="#FFFFFF";
+			gcd_2;
+			gcd_3;
+		}
+
+		gcd_0 -> gcd_2;
+		gcd_2 -> gcd_4 [label="T"];
+		gcd_2 -> gcd_3 [label="F"];
+		gcd_3 -> gcd_2;
+	}
+	subgraph cluster_lcm {
+		label="lcm(a: int, b: int)";
+		rankdir="TB";
+		lcm_0 [label="START", shape="rectangle", style="rounded"];
+		lcm_2 [label="zero := 0\na_is_zero := a == zero\nif a_is_zero", shape="rectangle", style="rounded"];
+		lcm_3 [label="b_is_zero := b == zero\nif b_is_zero", shape="rectangle", style="rounded"];
+		lcm_4 [label="return zero", shape="rectangle", style="rounded"];
+		lcm_5 [label="ab := a * b\nab := abs(ab)\ngcdab := gcd(a, b)\nlcm := ab / gcdab\nreturn lcm", shape="rectangle", style="rounded"];
+
+		lcm_0 -> lcm_2;
+		lcm_2 -> lcm_3 [label="T"];
+		lcm_2 -> lcm_5 [label="F"];
+		lcm_3 -> lcm_4 [label="T"];
+		lcm_3 -> lcm_5 [label="F"];
+	}
+	subgraph cluster_orders {
+		label="orders(u: int, n: int, use_lcm: bool)";
+		rankdir="TB";
+		orders_0 [label="START", shape="rectangle", style="rounded"];
+		orders_2 [label="is_term := u == n\nif is_term", shape="rectangle", style="rounded"];
+		orders_3 [label="if use_lcm", shape="rectangle", style="rounded"];
+		orders_4 [label="lcm := lcm(u, n)\nordu := lcm / u", shape="rectangle", style="rounded"];
+		orders_5 [label="gcdun := gcd(u, n)\nordu := n / gcdun", shape="rectangle", style="rounded"];
+		orders_6 [label="print u, ordu\none := 1\nu := u + one", shape="rectangle", style="rounded"];
+		orders_7 [label="return", shape="rectangle", style="rounded"];
+		subgraph cluster_orders_loop2 {
+			label="";
+			color="blue";
+			style="rounded";
+			bgcolor="#FFFFFF";
+			orders_2;
+			orders_3;
+			orders_4;
+			orders_5;
+			orders_6;
+		}
+
+		orders_0 -> orders_2;
+		orders_2 -> orders_7 [label="T"];
+		orders_2 -> orders_3 [label="F"];
+		orders_3 -> orders_4 [label="T"];
+		orders_3 -> orders_5 [label="F"];
+		orders_4 -> orders_6;
+		orders_5 -> orders_6;
+		orders_6 -> orders_2;
+	}
+	subgraph cluster_main {
+		label="main(n: int, use_lcm: bool)";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="zero := 0\nu := 1\nn := abs(n)\nprint zero, u\norders(u, n, use_lcm)", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+	}
+}

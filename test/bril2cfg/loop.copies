@@ -1,0 +1,15 @@
+digraph {
+	subgraph cluster_main {
+		label="main(a: int)";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="[]\n----------\ncnt := 0\n----------\n[]", shape="rectangle", style="rounded"];
+		main_3 [label="[]\n----------\ncond := cnt < a\nif cond\n----------\n[]", shape="rectangle", style="rounded"];
+		main_4 [label="[]\n----------\none := 1\ncnt := cnt + one\nprint cnt\n----------\n[]", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4 [label="T"];
+		main_4 -> main_3;
+	}
+}

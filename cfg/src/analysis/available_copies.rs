@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use bril_rs::{Function, Instruction, ValueOps};
 
@@ -39,7 +39,8 @@ impl AvailableCopies {
 impl std::fmt::Display for AvailableCopies {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
-        for (idx, (k, v)) in self.copies.iter().enumerate() {
+        let copies_sorted: BTreeMap<_, _> = self.copies.iter().collect();
+        for (idx, (k, v)) in copies_sorted.iter().enumerate() {
             write!(f, "{k} = {v}")?;
             if idx < self.copies.len() - 1 {
                 write!(f, ", ")?;
@@ -90,12 +91,15 @@ impl Fact for AvailableCopies {
             let mut not_copies = self.not_copies.clone();
             not_copies.remove(dest);
             let mut copies = self.copies.clone();
+            // remove everything that was copied from old dest
+            copies.retain(|_, v| v != dest);
             copies.insert(dest.clone(), args[0].clone());
             vec![Self { copies, not_copies }]
         } else if let Some(dest) = instr.1.get_dest() {
             let mut not_copies = self.not_copies.clone();
             not_copies.insert(dest.clone());
             let mut copies = self.copies.clone();
+            copies.retain(|_, v| v != &dest);
             copies.remove(&dest);
             vec![Self { copies, not_copies }]
         } else {

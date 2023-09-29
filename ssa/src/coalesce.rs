@@ -1,6 +1,5 @@
 use super::Instruction;
 use super::ValueOps;
-use std::collections::BTreeSet;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -39,7 +38,7 @@ pub struct InterferenceGraph {
     /// The map is symmetric so that if a interferes with b, b interferes with a
     interference: HashMap<String, HashSet<String>>,
     /// Set of edges connected variables that are move related
-    move_related: BTreeSet<UndirectedEdge>,
+    move_related: HashSet<UndirectedEdge>,
     /// Map from coalesced variable to variable it was coalesced into
     coalesced_nodes: HashMap<String, String>,
     /// Map from variable name to all variables that have been coalesced into it
@@ -57,7 +56,7 @@ impl InterferenceGraph {
         fn_args: &[Argument],
     ) -> Self {
         let mut interference: HashMap<_, HashSet<_>> = HashMap::new();
-        let mut move_related = BTreeSet::new();
+        let mut move_related = HashSet::new();
         for blk in cfg.blocks.values() {
             if let CfgNode::Block(blk) = blk {
                 for (instr_id, instr) in &blk.instrs {
@@ -88,14 +87,17 @@ impl InterferenceGraph {
                             x != &dest
                                 && copy.as_ref().map(|y| y != x).unwrap_or(true)
                         }) {
-                            if copies.in_facts[instr_id]
-                                .get_copy(live_var)
-                                .unwrap_or(live_var)
-                                == copies.in_facts[instr_id]
-                                    .get_copy(&dest)
-                                    .unwrap_or(&dest)
+                            if let Some(var_copy) =
+                                copies.in_facts[instr_id].get_copy(live_var)
                             {
-                                continue;
+                                if let Some(dest_copy) =
+                                    copies.in_facts[instr_id].get_copy(&dest)
+                                {
+                                    if var_copy == dest_copy {
+                                        // this is a copy, so no interference
+                                        continue;
+                                    }
+                                }
                             }
                             interference
                                 .entry(live_var.clone())

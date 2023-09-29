@@ -19,3 +19,8 @@ output.domtree = "-"
 command = "bril2json < {filename} | cargo run --bin bril2cfg -- --loops"
 return_code = 0
 output.loops = "-"
+
+[envs.copies]
+command = "bril2json < {filename} | cargo run --bin bril2cfg -- --df available_copies"
+return_code = 0
+output.copies = "-"

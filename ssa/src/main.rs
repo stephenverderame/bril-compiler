@@ -29,6 +29,10 @@ struct ExtraArgs {
     /// Pass this flag to show the interference graph after coalescing
     #[arg(long, default_value_t = false)]
     show_coalesced_ig: bool,
+
+    /// Pass this flag to disable coalescing
+    #[arg(long, default_value_t = false)]
+    no_coalesce: bool,
 }
 
 /// Invokes ssa conversion on the CFG
@@ -49,8 +53,11 @@ fn ssa(mut cfg: Cfg, args: &CLIArgs, f: &Function) -> Cfg {
             println!("{ig:?}");
         }
         println!();
-        //cfg
-        rewrite_vars(cfg, &ig)
+        if args.no_coalesce {
+            cfg
+        } else {
+            rewrite_vars(cfg, &ig)
+        }
     } else {
         cfg = insert_new_start(cfg, f);
         let dom_tree = dominators::compute_dominators(&cfg);

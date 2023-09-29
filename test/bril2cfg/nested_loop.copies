@@ -1,0 +1,27 @@
+digraph {
+	subgraph cluster_main {
+		label="main(a: int)";
+		rankdir="TB";
+		main_0 [label="START", shape="rectangle", style="rounded"];
+		main_2 [label="[]\n----------\ni := 0\nrun_nest := false\n----------\n[]", shape="rectangle", style="rounded"];
+		main_3 [label="[]\n----------\nb := i < a\nif b\n----------\n[]", shape="rectangle", style="rounded"];
+		main_4 [label="[]\n----------\nif run_nest\n----------\n[]", shape="rectangle", style="rounded"];
+		main_5 [label="[]\n----------\nj := 0\n----------\n[]", shape="rectangle", style="rounded"];
+		main_6 [label="[]\n----------\nb2 := j < a\nif b2\n----------\n[]", shape="rectangle", style="rounded"];
+		main_7 [label="[]\n----------\none := 1\nj_inc := j + one\nprod := i * j_inc\nprint prod\nj := j + one\n----------\n[]", shape="rectangle", style="rounded"];
+		main_8 [label="[]\n----------\nzero := 0\nprint zero\n----------\n[]", shape="rectangle", style="rounded"];
+		main_9 [label="[]\n----------\nrun_nest := !run_nest\none := 1\ni := i + one\n----------\n[]", shape="rectangle", style="rounded"];
+
+		main_0 -> main_2;
+		main_2 -> main_3;
+		main_3 -> main_4 [label="T"];
+		main_4 -> main_5 [label="T"];
+		main_4 -> main_8 [label="F"];
+		main_5 -> main_6;
+		main_6 -> main_7 [label="T"];
+		main_6 -> main_9 [label="F"];
+		main_7 -> main_6;
+		main_8 -> main_9;
+		main_9 -> main_3;
+	}
+}
