@@ -30,3 +30,5 @@ at a basic block level.
 * `dce` - (Regular/Global) dead code elimination
 * `licm` - Loop invariant code motion
 * `ssa` - Conversion into and out of SSA with semi-aggressive coalescing
+* `is-ssa` - Asserts that a program is in SSA form or does not contain any phi
+nodes (depending on arguments)
