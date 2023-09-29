@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use bril_rs::{Code, Function, Instruction, Type, ValueOps};
 use cfg::{
     analysis::{
-        analyze,
+        analyze, available_copies,
         defined_vars::{self, DefinedVars},
         dominators,
         live_vars::{self, LiveVars},
@@ -37,14 +37,19 @@ fn ssa(mut cfg: Cfg, args: &CLIArgs, f: &Function) -> Cfg {
     (if args.out {
         cfg = safely_remove_phi(cfg);
         let lv = analyze(&cfg, &live_vars::LiveVars::top(), None);
-        let mut ig = InterferenceGraph::new(&cfg, &lv, &f.args);
+        let copies =
+            analyze(&cfg, &available_copies::AvailableCopies::top(f), None);
+        let mut ig = InterferenceGraph::new(&cfg, &lv, &copies, &f.args);
         if args.show_ig {
+            println!("Function:: {}", f.name);
             println!("{ig:?}");
         }
         ig = ig.coalesce_all();
         if args.show_coalesced_ig {
             println!("{ig:?}");
         }
+        println!();
+        //cfg
         rewrite_vars(cfg, &ig)
     } else {
         cfg = insert_new_start(cfg, f);

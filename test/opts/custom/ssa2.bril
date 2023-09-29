@@ -1,0 +1,16 @@
+# ARGS: 10
+@main(a: int) {
+    h: int = id a;
+    b: bool = eq h a;
+    br b .yes .no;
+.yes:
+    h: int = const 10;
+    a: int = id a;
+    jmp .end;
+.no:
+    h: int = id h;
+    a: int = const 10;
+.end:
+    print h;
+    print a;
+}

@@ -237,7 +237,14 @@ impl CfgNode {
                 write!(f, "")
             }
             EffectOps::Print => {
-                write!(f, "print {}", args.get(0).unwrap())
+                let mut args_str = String::new();
+                for (idx, arg) in args.iter().enumerate() {
+                    args_str.push_str(arg);
+                    if idx < args.len() - 1 {
+                        args_str.push_str(", ");
+                    }
+                }
+                write!(f, "print {args_str}")
             }
             EffectOps::Nop => panic!("Nop should not be in CFG"),
             EffectOps::Store => {

@@ -1,6 +1,7 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 use atty::Stream;
-use bril_rs::{load_program, load_program_from_read, Program};
+use bril_rs::{load_program, load_program_from_read, Function, Program};
+use cfg::analysis::available_copies::AvailableCopies;
 use cfg::analysis::dominators::compute_dominators;
 use cfg::analysis::loops::{find_natural_loops, NaturalLoop};
 use cfg::analysis::Fact;
@@ -85,7 +86,7 @@ fn print_prog(prog: Program, args: &CLIArgs) {
             }
         }
         args_name.push(')');
-        print_dot(&cfg, &f.name, &args_name, args);
+        print_dot(&cfg, &f.name, &args_name, args, &f);
     }
     println!("}}");
 }
@@ -95,8 +96,14 @@ fn print_prog(prog: Program, args: &CLIArgs) {
 ///
 /// We print each function as a clustered subgraph
 /// of a digraph
-fn print_dot(cfg: &Cfg, fn_name: &str, fn_args: &str, args: &CLIArgs) {
-    let df_res_str = display_facts(&args.df, cfg);
+fn print_dot(
+    cfg: &Cfg,
+    fn_name: &str,
+    fn_args: &str,
+    args: &CLIArgs,
+    f: &Function,
+) {
+    let df_res_str = display_facts(&args.df, cfg, f);
     println!("\tsubgraph cluster_{fn_name} {{");
     println!("\t\tlabel=\"{fn_name}{fn_args}\";");
     println!("\t\trankdir=\"TB\";");
@@ -231,6 +238,7 @@ fn display_dom(cfg: &Cfg, fn_name: &str) {
 fn display_facts(
     df: &Option<String>,
     cfg: &Cfg,
+    f: &Function,
 ) -> HashMap<usize, (String, String)> {
     use cfg::CfgNode;
     let mut res = HashMap::new();
@@ -246,6 +254,22 @@ fn display_facts(
                         in_facts.iter().fold(LiveVars::top(), |a, b| a.meet(b))
                     );
                     let out_str = format!("\\n----------\\n{out_fact}");
+                    res.insert(*k, (in_str, out_str));
+                } else {
+                    res.insert(*k, (String::new(), String::new()));
+                };
+            }
+        }
+        Some(x) if x == "available_copies" => {
+            let out = analyze(cfg, &AvailableCopies::top(f), None);
+            for (k, v) in &cfg.blocks {
+                if let CfgNode::Block(block) = v {
+                    let (in_fact, out_facts) = out.block_facts(block, *k);
+                    let in_str = format!("{in_fact}\\n----------\\n");
+                    let out_str = format!(
+                        "\\n----------\\n{}",
+                        out_facts.iter().next().unwrap()
+                    );
                     res.insert(*k, (in_str, out_str));
                 } else {
                     res.insert(*k, (String::new(), String::new()));

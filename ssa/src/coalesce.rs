@@ -1,9 +1,11 @@
 use super::Instruction;
 use super::ValueOps;
+use std::collections::BTreeSet;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use bril_rs::Argument;
+use cfg::analysis::available_copies::AvailableCopies;
 use cfg::{
     analysis::{live_vars::LiveVars, AnalysisResult},
     Cfg, CfgNode,
@@ -37,7 +39,7 @@ pub struct InterferenceGraph {
     /// The map is symmetric so that if a interferes with b, b interferes with a
     interference: HashMap<String, HashSet<String>>,
     /// Set of edges connected variables that are move related
-    move_related: HashSet<UndirectedEdge>,
+    move_related: BTreeSet<UndirectedEdge>,
     /// Map from coalesced variable to variable it was coalesced into
     coalesced_nodes: HashMap<String, String>,
     /// Map from variable name to all variables that have been coalesced into it
@@ -51,14 +53,15 @@ impl InterferenceGraph {
     pub fn new(
         cfg: &Cfg,
         live_vars: &AnalysisResult<LiveVars>,
+        copies: &AnalysisResult<AvailableCopies>,
         fn_args: &[Argument],
     ) -> Self {
         let mut interference: HashMap<_, HashSet<_>> = HashMap::new();
-        let mut move_related = HashSet::new();
+        let mut move_related = BTreeSet::new();
         for blk in cfg.blocks.values() {
             if let CfgNode::Block(blk) = blk {
                 for (instr_id, instr) in &blk.instrs {
-                    let live = &live_vars.in_facts[instr_id].vars;
+                    let live_out = &live_vars.in_facts[instr_id].vars;
                     let mut copy = None;
                     if let Instruction::Value {
                         op: ValueOps::Id,
@@ -67,15 +70,33 @@ impl InterferenceGraph {
                         ..
                     } = instr
                     {
-                        move_related
-                            .insert(UndirectedEdge::new(&args[0], dest));
+                        if !interference
+                            .get(dest)
+                            .map_or(false, |interferers| {
+                                interferers.contains(&args[0])
+                            })
+                            && &args[0] != dest
+                        {
+                            // add more related if not interfering along another path
+                            move_related
+                                .insert(UndirectedEdge::new(&args[0], dest));
+                        }
                         copy = Some(args[0].clone());
                     }
                     if let Some(dest) = instr.get_dest() {
-                        for live_var in live.iter().filter(|&x| {
+                        for live_var in live_out.iter().filter(|&x| {
                             x != &dest
                                 && copy.as_ref().map(|y| y != x).unwrap_or(true)
                         }) {
+                            if copies.in_facts[instr_id]
+                                .get_copy(live_var)
+                                .unwrap_or(live_var)
+                                == copies.in_facts[instr_id]
+                                    .get_copy(&dest)
+                                    .unwrap_or(&dest)
+                            {
+                                continue;
+                            }
                             interference
                                 .entry(live_var.clone())
                                 .or_default()
@@ -84,6 +105,8 @@ impl InterferenceGraph {
                                 .entry(dest.clone())
                                 .or_default()
                                 .insert(live_var.clone());
+                            move_related
+                                .remove(&UndirectedEdge::new(live_var, &dest));
                         }
                     }
                 }
