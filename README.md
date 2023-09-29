@@ -29,3 +29,4 @@ constant folding, constant propagation, copy propagation, and algebraic simplifi
 at a basic block level.
 * `dce` - (Regular/Global) dead code elimination
 * `licm` - Loop invariant code motion
+* `ssa` - Conversion into and out of SSA with semi-aggressive coalescing

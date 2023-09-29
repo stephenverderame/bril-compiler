@@ -37,3 +37,11 @@ pipeline = [
     "cargo run --bin dce",
     "brili -p {args}",
 ]
+
+[runs.ssa]
+pipeline = [
+    "bril2json",
+    "cargo run --bin ssa",
+    "cargo run --bin ssa -- --out",
+    "brili -p {args}",
+]
