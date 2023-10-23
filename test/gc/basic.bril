@@ -1,0 +1,19 @@
+@main() {
+    cnt: int = const 100;
+    i: int = const 0;
+    one: int = const 1;
+    keep: ptr<int> = alloc one;
+    store keep one;
+.header:
+    b: bool = lt i cnt;
+    br b .loop .end;
+.loop:
+    i: int = add i one;
+    p: ptr<int> = alloc one;
+    free p;
+    jmp .header;
+.end:
+    v: int = load keep;
+    print v;
+    free keep;
+}

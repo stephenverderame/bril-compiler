@@ -1,0 +1,20 @@
+@main() {
+    i: int = const 0;
+    one: int = const 1;
+    thirty: int = const 30;
+    skip_first: ptr<int> = alloc thirty;
+.header:
+    b: bool = lt i thirty;
+    br b .loop .end;
+.loop:
+    p: ptr<int> = ptradd skip_first i;
+    store p i;
+    v: int = load p;
+    print v;
+    i: int = add i one;
+    jmp .header;
+.end:
+    v: int = load skip_first;
+    print v;
+    free skip_first;
+}

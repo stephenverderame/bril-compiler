@@ -1,0 +1,27 @@
+@main() {
+    one: int = const 1;
+    a: ptr<ptr<int>> = alloc one; 
+    i: int = const 0;
+    cnt: int = const 100;
+.header:
+    b: bool = lt i cnt;
+    br b .body .end;
+.body:
+    do_free: bool = ge i one;
+    br do_free .body.1 .body.2;
+.body.1:
+    p: ptr<int> = load a;
+    free p;
+.body.2:
+    p: ptr<int> = alloc one;
+    store p i;
+    store a p;
+    i: int = add i one;
+    jmp .header;
+.end:
+    p: ptr<int> = load a;
+    c: int = load p;
+    print c;
+    free p;
+    free a;
+}

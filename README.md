@@ -8,8 +8,8 @@ Each of these tools is developed unix style and communicates via the shell.
 
 ## Contents
 
-* `bril-rs` - Simple rust library for interfacing with Bril. Most of it
-is taken from Patrick LaFontaine from [https://github.com/sampsyo/bril](https://github.com/sampsyo/bril)
+* `bril-rs` - Simple rust library for interfacing with Bril. Taken from Patrick LaFontaine in the [BRIL Repo](https://github.com/sampsyo/bril) with some small modifications.
+* `brilirs` - A BRIL interpreter written in Rust. Taken from William Thompson in the [BRIL repo](https://github.com/sampsyo/bril) with some small modifcations.
 * `cfg` - Library for constructing CFGs and performing data flow analyses. Currently
 implemented analyses include reaching definitions, constructing dominator trees,
 live variables, loop invariant instructions, and finding natural loops.
@@ -32,3 +32,4 @@ at a basic block level.
 * `ssa` - Conversion into and out of SSA with semi-aggressive coalescing
 * `is-ssa` - Asserts that a program is in SSA form or does not contain any phi
 nodes (depending on arguments)
+* `gc` - A (sort-of) incremental, generational garbage collector for `brilirs`

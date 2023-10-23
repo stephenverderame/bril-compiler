@@ -41,3 +41,6 @@ command = """\
             bril2json < {filename} | cargo run --bin ssa | \
             cargo run --bin is-ssa | cargo run --bin ssa -- --out | \
             cargo run --bin is-ssa -- --not | brili {args}"""
+
+[envs.gc]
+command = "bril2json < {filename} | cargo run --bin brilirs {args}"

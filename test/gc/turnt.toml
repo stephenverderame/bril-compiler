@@ -1,0 +1,13 @@
+
+[envs.gc_small]
+command = """bril2json < {filename} | cargo run --bin brilirs -- \
+            --young-size 20 --med-size 40 --old-size 80 {args}"""
+
+[envs.small_out]
+command = """bril2json < {filename} | cargo run --bin brilirs -- \
+            --young-size 20 --med-size 40 --old-size 80 --debug-gc {args} \
+            2>&1 > /dev/null | sed -ne '/g0:/,$p' | grep ."""
+output.gc = "-"
+
+[envs.baseline]
+command = "bril2json < {filename} | brili {args}"

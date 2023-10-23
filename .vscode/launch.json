@@ -8,11 +8,16 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/target/debug/ssa",
+            "program": "${workspaceFolder}/target/debug/brilirs",
             "args": [
                 "-f",
                 "${workspaceFolder}/debug.json",
-                "--out"
+                "--young-size",
+                "20",
+                "--med-size",
+                "40",
+                "--old-size",
+                "80",
             ],
             "cwd": "${workspaceFolder}"
         }

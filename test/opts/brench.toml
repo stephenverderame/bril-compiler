@@ -45,3 +45,11 @@ pipeline = [
     "cargo run --bin ssa -- --out",
     "brili -p {args}",
 ]
+
+[runs.ssa-no-coalesce]
+pipeline = [
+    "bril2json",
+    "cargo run --bin ssa",
+    "cargo run --bin ssa -- --out --no-coalesce",
+    "brili -p {args}",
+]

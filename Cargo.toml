@@ -12,4 +12,6 @@ members = [
     "licm",
     "ssa",
     "is-ssa",
+    "brilirs",
+    "gc",
 ]
