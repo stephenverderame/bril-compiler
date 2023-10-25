@@ -42,5 +42,16 @@ command = """\
             cargo run --bin is-ssa | cargo run --bin ssa -- --out | \
             cargo run --bin is-ssa -- --not | brili {args}"""
 
+# Note: These don't work with the brilirs interpreter
+# This is bc, the brilirs interpreter assumes the assembly is generated
+# from a well-formed high-level program. For example, while legal for a variable
+# to be used which is not defined along a path that is never taken, the interpreter
+# doesn't like that.
 [envs.gc]
-command = "bril2json < {filename} | cargo run --bin brilirs {args}"
+command = """\
+            case {filename} in
+            *"ssa1.bril") bril2json < {filename} | brili {args} ;;
+            *"quadratic.bril") bril2json < {filename} | brili {args} ;;
+            * ) bril2json < {filename} | cargo run --bin brilirs {args} ;;
+            esac
+            """

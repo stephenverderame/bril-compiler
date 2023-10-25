@@ -7,8 +7,8 @@
     e: int = add e c;
     e: int = add e d;
     hundred: int = const 100;
-    b: bool = gt e hundred;
-    br b .yes .no;
+    cond: bool = gt e hundred;
+    br cond .yes .no;
 .yes:
     a: int = const 10;
     b: int = const 20;

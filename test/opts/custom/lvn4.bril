@@ -1,7 +1,7 @@
 # ARGS: 10
 @main(a: int) {
-    b: int = id a;
-    c: int = id b;
+    e: int = id a;
+    c: int = id e;
     d: int = const 20;
     b: bool = lt a d;
     b: bool = eq a a;

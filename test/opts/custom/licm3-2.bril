@@ -11,13 +11,13 @@
   br b .block.5 .block.6;
 .block.5:
   a: int = const 10;
-  b: int = add a a;
+  b2: int = add a a;
   jmp .block.7;
 .block.6:
   a: int = const 20;
-  b: int = add a a;
+  b2: int = add a a;
 .block.7:
-  print b;
+  print b2;
   i: int = add i one_nmv;
   jmp .block.3;
 .block.1:

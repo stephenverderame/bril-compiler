@@ -20,7 +20,11 @@ pub trait Generation {
     /// Returns true if this generation should be collected.
     fn should_collect(&self) -> bool;
     /// Performs a collection of this generation.
-    fn collect(&mut self, roots: &[Pointer]) -> Vec<(Pointer, &[Value])>;
+    fn collect(
+        &mut self,
+        roots: &[Pointer],
+        masks: &[usize],
+    ) -> Vec<(Pointer, &[Value])>;
     /// Writes the given value to the given pointer.
     /// Returns an error if the pointer is not contained in this generation.
     fn write(&mut self, key: &Pointer, val: Value) -> Result<(), ()>;
@@ -28,9 +32,9 @@ pub trait Generation {
     /// Returns an error if the pointer is not contained in this generation.
     fn read(&self, key: &Pointer) -> Result<&Value, ()>;
 
-    /// Returns pointers that are not managed by this generation but are
+    /// Returns masks of pointers' bases that are not managed by this generation but are
     /// pointed to by pointers in this generation.
-    fn remembered_set(&self) -> Vec<Pointer>;
+    fn remembered_masks(&self, heap_idx: u8) -> Vec<usize>;
 
     /// Updates the pointer at `old_ptr` to `new_ptr` where
     /// `old_ptr` is a pointer that is managed by another generation.
@@ -48,62 +52,103 @@ pub trait Generation {
 
     /// Returns the number of promotions this generation has undergone.
     fn num_promotions(&self) -> usize;
+
+    /// Returns the number of pointers stored in this generation that point to
+    /// the given heap.
+    fn num_remembered(&self, heap_idx: u8) -> usize;
 }
 
+const WB_CACHE_SIZE: usize = 256;
+const WB_CACHE_MASK: usize = WB_CACHE_SIZE - 1;
 /// A generational write barrier which keeps track of the remembered set, the
 /// set of pointers in this generation that point to other generations.
 struct WriteBarrier {
-    /// map from pointers in this generation to pointers in other generations
-    remembered_sets: HashMap<Pointer, Pointer>,
+    /// map heap index to direct mapped cache of reference counts
+    /// The index in the cache is mask of all base pointers the reference count belongs to
+    remembered_sets: HashMap<u8, [usize; WB_CACHE_SIZE]>,
+    cur_idx: u8,
 }
 
 impl WriteBarrier {
     /// Updates the write barrier with the given write.
-    fn on_write(&mut self, key: &Pointer, val: Value) {
-        match &val {
-            Value::Pointer(p) => {
-                if p.heap_id != key.heap_id {
-                    self.remembered_sets.insert(*key, *p);
+    fn on_write(&mut self, old_val: Option<&Value>, val: &Value) {
+        if let Some(old_val) = old_val {
+            self.dec(old_val);
+        }
+        self.inc(val);
+    }
+
+    fn on_remove(&mut self, val: &Value) {
+        self.dec(val);
+    }
+
+    /// Decrements the refcount for a value, `v`, outside this generation.
+    fn dec(&mut self, v: &Value) {
+        if let Value::Pointer(p) = v {
+            if p.heap_id != self.cur_idx {
+                if let Some(cache) = self.remembered_sets.get_mut(&p.heap_id) {
+                    cache[p.base & WB_CACHE_MASK] -= 1;
                 }
             }
-            _ => {
-                self.remembered_sets.remove(key);
+        }
+    }
+
+    /// Increments the refcount for a value, `v`, outside this generation.
+    fn inc(&mut self, v: &Value) {
+        if let Value::Pointer(p) = v {
+            if p.heap_id != self.cur_idx {
+                self.remembered_sets
+                    .entry(p.heap_id)
+                    .or_insert_with(|| [0; WB_CACHE_SIZE])
+                    [p.base & WB_CACHE_MASK] += 1;
             }
         }
     }
 
-    /// Returns pointers that are part of the current generation that point to `old_ptr`.
-    fn stored_ptrs(&self, old_ptr: &Pointer) -> Vec<Pointer> {
-        let mut vc = vec![];
-        for (k, v) in &self.remembered_sets {
-            if v == old_ptr {
-                vc.push(*k);
-            }
+    /// Increments the refcount for all values in `data` outside this generation.
+    fn inc_all(&mut self, data: &[Value]) {
+        for v in data {
+            self.inc(v);
         }
-        vc
     }
 
-    fn new() -> Self {
+    /// Decrements the refcount for all values in `data` outside this generation.
+    fn dec_all(&mut self, data: &[Value]) {
+        for v in data {
+            self.dec(v);
+        }
+    }
+
+    /// Returns the masks of alive pointers in `heap_idx` which are pointed to by
+    /// pointers in this generation.
+    fn remembered_masks(&self, heap_idx: u8) -> Vec<usize> {
+        let mut res = vec![];
+        if let Some(cache) = self.remembered_sets.get(&heap_idx) {
+            for (i, &count) in cache.iter().enumerate() {
+                if count > 0 {
+                    res.push(i);
+                }
+            }
+        }
+        res
+    }
+
+    fn num_refs(&self, heap_idx: u8) -> usize {
+        self.remembered_sets
+            .get(&heap_idx)
+            .map_or(0, |cache| cache.iter().sum())
+    }
+
+    fn new(cur_idx: u8) -> Self {
         Self {
             remembered_sets: HashMap::new(),
+            cur_idx,
         }
     }
 
     /// Clears the remembered set.
     fn clear_all(&mut self) {
         self.remembered_sets.clear();
-    }
-
-    /// Clears the given pointers from the remembered set.
-    fn clear(&mut self, p: &Pointer) {
-        self.remembered_sets.remove(p);
-    }
-
-    /// Returns pointers in the remembered set that point to pointers of the given heap id.
-    /// This will return a vec of pointers in `heap_idx` that are pointed to by
-    /// pointers in this generation.
-    fn remembered_set(&self) -> Vec<Pointer> {
-        self.remembered_sets.values().copied().collect()
     }
 }
 
@@ -125,7 +170,7 @@ impl CopyingGen {
             space: vec![Value::Uninitialized; size].into_boxed_slice(),
             cur_idx: 0,
             heap_id,
-            wb: WriteBarrier::new(),
+            wb: WriteBarrier::new(heap_id),
             allocated: HashMap::new(),
             num_collections: 0,
             num_promotions: 0,
@@ -164,6 +209,7 @@ impl Generation for CopyingGen {
     fn memmove(&mut self, data: &[Value]) -> Result<Pointer, ()> {
         let ptr = self.alloc(data.len())?;
         self.space[ptr.base..ptr.base + data.len()].copy_from_slice(data);
+        self.wb.inc_all(data);
         Ok(ptr)
     }
 
@@ -183,15 +229,30 @@ impl Generation for CopyingGen {
         self.cur_idx == 0
     }
 
-    fn collect(&mut self, roots: &[Pointer]) -> Vec<(Pointer, &[Value])> {
-        let mut promotions = self.allocated.clone();
+    #[allow(clippy::too_many_lines)]
+    fn collect(
+        &mut self,
+        roots: &[Pointer],
+        masks: &[usize],
+    ) -> Vec<(Pointer, &[Value])> {
         let mut to_visit = roots.to_vec();
+        for base_ptr in self.allocated.keys() {
+            for mask in masks {
+                if mask & base_ptr == *mask {
+                    to_visit.push(Pointer {
+                        heap_id: self.heap_id,
+                        base: *base_ptr,
+                        offset: 0,
+                    });
+                    break;
+                }
+            }
+        }
         let mut visited = HashSet::new();
         self.num_collections += 1;
         while let Some(ptr) = to_visit.pop() {
             if !visited.contains(&ptr) {
                 visited.insert(ptr);
-                promotions.remove(&ptr.base);
                 if let Some(val) = self.allocated.get(&ptr.base) {
                     #[allow(
                         clippy::cast_possible_truncation,
@@ -208,23 +269,20 @@ impl Generation for CopyingGen {
                 }
             }
         }
+        let res = visited
+            .iter()
+            .map(|p| {
+                (*p, {
+                    let sz = self.allocated.get(&p.base).unwrap();
+                    &self.space[p.base..p.base + sz]
+                })
+            })
+            .collect();
         self.cur_idx = 0;
         self.wb.clear_all();
         self.allocated.clear();
-        self.num_promotions += promotions.len();
-        promotions
-            .iter()
-            .map(|(&base, &size)| {
-                (
-                    Pointer {
-                        heap_id: self.heap_id,
-                        base,
-                        offset: 0,
-                    },
-                    &self.space[base..base + size],
-                )
-            })
-            .collect()
+        self.num_promotions += visited.len();
+        res
     }
 
     fn write(&mut self, key: &Pointer, val: Value) -> Result<(), ()> {
@@ -234,7 +292,14 @@ impl Generation for CopyingGen {
             && key.base as i64 + key.offset >= 0
             && idx < self.space.len()
         {
-            self.wb.on_write(key, val);
+            self.wb.on_write(
+                if self.cur_idx > idx {
+                    Some(&self.space[idx])
+                } else {
+                    None
+                },
+                &val,
+            );
             self.space[idx] = val;
             Ok(())
         } else {
@@ -255,13 +320,24 @@ impl Generation for CopyingGen {
         }
     }
 
-    fn remembered_set(&self) -> Vec<Pointer> {
-        self.wb.remembered_set()
+    fn remembered_masks(&self, heap_idx: u8) -> Vec<usize> {
+        self.wb.remembered_masks(heap_idx)
+    }
+
+    fn num_remembered(&self, heap_idx: u8) -> usize {
+        self.wb.num_refs(heap_idx)
     }
 
     fn update_ptr(&mut self, old_ptr: &Pointer, new_ptr: Pointer) {
-        for ptr in self.wb.stored_ptrs(old_ptr) {
-            self.write(&ptr, Value::Pointer(new_ptr)).unwrap();
+        for i in 0..self.cur_idx {
+            if matches!(self.space[i], Value::Pointer(old_p) if old_p == *old_ptr)
+            {
+                self.space[i] = Value::Pointer(new_ptr);
+                self.wb.on_write(
+                    Some(&Value::Pointer(*old_ptr)),
+                    &Value::Pointer(new_ptr),
+                );
+            }
         }
     }
 }
@@ -281,7 +357,7 @@ impl ElderGen {
             allocations: HashMap::new(),
             heap_id,
             collection_thresh,
-            wb: WriteBarrier::new(),
+            wb: WriteBarrier::new(heap_id),
             num_collections: 0,
         }
     }
@@ -305,6 +381,10 @@ impl Generation for ElderGen {
         0
     }
 
+    fn num_remembered(&self, heap_idx: u8) -> usize {
+        self.wb.num_refs(heap_idx)
+    }
+
     fn num_collections(&self) -> usize {
         self.num_collections
     }
@@ -317,14 +397,15 @@ impl Generation for ElderGen {
     }
 
     fn memmove(&mut self, data: &[Value]) -> Result<Pointer, ()> {
-        let p = Pointer {
+        let new_p = Pointer {
             heap_id: self.heap_id,
             base: self.allocations.len(),
             offset: 0,
         };
         self.allocations
             .insert(self.allocations.len(), data.to_vec().into_boxed_slice());
-        Ok(p)
+        self.wb.inc_all(data);
+        Ok(new_p)
     }
 
     fn contains(&self, key: &Pointer) -> bool {
@@ -339,9 +420,25 @@ impl Generation for ElderGen {
         self.allocations.len() >= self.collection_thresh
     }
 
-    fn collect(&mut self, roots: &[Pointer]) -> Vec<(Pointer, &[Value])> {
+    fn collect(
+        &mut self,
+        roots: &[Pointer],
+        masks: &[usize],
+    ) -> Vec<(Pointer, &[Value])> {
         let mut to_visit = roots.to_vec();
         let mut visited = HashSet::new();
+        for base_ptr in self.allocations.keys() {
+            for mask in masks {
+                if mask & base_ptr == *mask {
+                    to_visit.push(Pointer {
+                        heap_id: self.heap_id,
+                        base: *base_ptr,
+                        offset: 0,
+                    });
+                    break;
+                }
+            }
+        }
         self.num_collections += 1;
         while let Some(ptr) = to_visit.pop() {
             if !visited.contains(&ptr) {
@@ -365,11 +462,7 @@ impl Generation for ElderGen {
                 offset: 0,
             }) {
                 to_delete.insert(*b);
-                self.wb.clear(&Pointer {
-                    heap_id: self.heap_id,
-                    base: *b,
-                    offset: 0,
-                });
+                self.wb.dec_all(&self.allocations[b]);
             }
         }
         self.allocations.retain(|b, _| !to_delete.contains(b));
@@ -383,7 +476,10 @@ impl Generation for ElderGen {
             && key.offset >= 0
             && self.allocations[&key.base].len() > offset
         {
-            self.wb.on_write(key, val);
+            self.wb.on_write(
+                self.allocations.get(&key.base).map(|a| &a[offset]),
+                &val,
+            );
             self.allocations.get_mut(&key.base).unwrap()[offset] = val;
             Ok(())
         } else {
@@ -404,13 +500,21 @@ impl Generation for ElderGen {
         }
     }
 
-    fn remembered_set(&self) -> Vec<Pointer> {
-        self.wb.remembered_set()
+    fn remembered_masks(&self, heap_idx: u8) -> Vec<usize> {
+        self.wb.remembered_masks(heap_idx)
     }
 
     fn update_ptr(&mut self, old_ptr: &Pointer, new_ptr: Pointer) {
-        for ptr in self.wb.stored_ptrs(old_ptr) {
-            self.write(&ptr, Value::Pointer(new_ptr)).unwrap();
+        for alloc in self.allocations.values_mut() {
+            for old_val in alloc.iter_mut() {
+                if matches!(old_val, Value::Pointer(p) if p == old_ptr) {
+                    self.wb.on_write(
+                        Some(&Value::Pointer(*old_ptr)),
+                        &Value::Pointer(new_ptr),
+                    );
+                    *old_val = Value::Pointer(new_ptr);
+                }
+            }
         }
     }
 

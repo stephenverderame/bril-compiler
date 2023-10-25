@@ -148,7 +148,7 @@ impl MemoryManager for Heap {
     fn alloc(
         &mut self,
         amount: i64,
-        _: &[Value],
+        _: &mut [Value],
     ) -> Result<Value, InterpError> {
         let amount: usize = amount
             .try_into()
@@ -438,7 +438,7 @@ fn execute_value_op<T: std::io::Write, M: MemoryManager>(
         },
         Alloc => {
             let arg0 = get_arg::<i64>(&state.env, 0, args);
-            let res = state.heap.alloc(arg0, &state.env.env)?;
+            let res = state.heap.alloc(arg0, &mut state.env.env)?;
             state.env.set(dest, res);
         }
         Load => {
@@ -752,8 +752,8 @@ pub fn execute_main<T: std::io::Write, U: std::io::Write>(
         .ok_or(InterpError::NoMainFunction)?;
 
     let mut env = Environment::new(main_func.num_of_vars);
-    // let heap = Heap::default();
-    let heap = Collector::new(gc_settings.0, gc_settings.1, gc_settings.2);
+    let heap = Heap::default();
+    //let heap = Collector::new(gc_settings.0, gc_settings.1, gc_settings.2);
 
     env = parse_args(env, &main_func.args, &main_func.args_as_nums, input_args)
         .map_err(|e| e.add_pos(main_func.pos.clone()))?;

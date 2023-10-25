@@ -10,13 +10,13 @@
     br b .loop.body.left .loop.body.right;
 .loop.body.left:
     a: int = const 10;
-    b: int = add a a;
+    b2: int = add a a;
     jmp .loop.body.tail;
 .loop.body.right:
     a: int = const 20;
-    b: int = add a a;
+    b2: int = add a a;
 .loop.body.tail:
-    print b;
+    print b2;
     one: int = const 1;
     i: int = add i one;
     jmp .loop.head;

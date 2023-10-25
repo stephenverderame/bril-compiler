@@ -8,7 +8,7 @@
     d: bool = id c;
     jmp .end;
 .no:
-    d: bool = id b;
+    d: bool = id c;
 .end:
     print a;
 }

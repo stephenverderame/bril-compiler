@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
-use std::{fmt, slice};
+use std::{collections::HashSet, fmt, slice};
 pub mod error;
 
 mod generation;
@@ -53,7 +53,7 @@ pub trait MemoryManager {
     fn alloc(
         &mut self,
         amount: i64,
-        roots: &[Value],
+        roots: &mut [Value],
     ) -> Result<Value, InterpError>;
     /// Marks the given memory as able to be freed. A memory manager need not do
     /// anything with this information.
@@ -73,10 +73,12 @@ pub trait MemoryManager {
     fn test(&mut self) -> MemStats;
 }
 
+const NUM_GENS: usize = 1;
+
 /// The generational collector
 pub struct Collector {
     /// Array of generations, from youngest to oldest
-    gens: [Box<dyn Generation>; 3],
+    gens: [Box<dyn Generation>; NUM_GENS],
 }
 
 /// An allocation is either a new allocation or an allocation caused by promoting
@@ -99,9 +101,9 @@ impl Collector {
     pub fn new(g0_size: usize, g1_size: usize, g2_size: usize) -> Self {
         Self {
             gens: [
-                Box::new(CopyingGen::new(g0_size, 0)),
-                Box::new(CopyingGen::new(g1_size, 1)),
-                Box::new(ElderGen::new(g2_size, 2)),
+                // Box::new(CopyingGen::new(g0_size, 0)),
+                // Box::new(CopyingGen::new(g1_size, 1)),
+                Box::new(ElderGen::new(g2_size, 0)),
             ],
         }
     }
@@ -119,6 +121,7 @@ impl Collector {
         alloc: Allocation,
         roots: &[Pointer],
         did_collect: bool,
+        masks: &[Vec<usize>],
     ) -> Result<Vec<AllocationResult>, InterpError> {
         let gens_left = gens.len() - 1;
         let cur_gen = &mut gens[0];
@@ -129,6 +132,7 @@ impl Collector {
                 alloc,
                 roots,
                 did_collect,
+                masks,
             );
         }
         match alloc {
@@ -148,7 +152,13 @@ impl Collector {
             }
         }
         // out of space:
-        Self::collect_and_push_allocation(gens, alloc, roots, did_collect)
+        Self::collect_and_push_allocation(
+            gens,
+            alloc,
+            roots,
+            did_collect,
+            masks,
+        )
     }
 
     /// Performs a collection if we didn't already and then tries to allocate the given allocation
@@ -166,6 +176,7 @@ impl Collector {
         alloc: Allocation,
         roots: &[Pointer],
         did_collect: bool,
+        masks: &[Vec<usize>],
     ) -> Result<Vec<AllocationResult>, InterpError> {
         let gen_len = gens.len();
         if gen_len > 1 {
@@ -175,7 +186,7 @@ impl Collector {
             let cur_gen = &mut gens[0];
             if !did_collect {
                 // we didn't collect, so collect the current generation
-                let promotions = cur_gen.collect(roots);
+                let promotions = cur_gen.collect(roots, &masks[0]);
                 let mut res = vec![];
                 assert!(promotions.is_empty() || gen_len > 1);
                 // need to push promotions to the next generation
@@ -190,6 +201,7 @@ impl Collector {
                         Allocation::Move(old_ptr, data),
                         roots,
                         did_collect,
+                        &masks[1..],
                     ) {
                         res.extend(nres);
                     } else {
@@ -198,12 +210,11 @@ impl Collector {
                 }
                 // we promoted and collected, now try and allocate in this generation,
                 // this time with did_collect = true
-                return Self::alloc_or_collect(gens, alloc, roots, true).map(
-                    |r| {
+                return Self::alloc_or_collect(gens, alloc, roots, true, masks)
+                    .map(|r| {
                         res.extend(r);
                         res
-                    },
-                );
+                    });
             }
             Self::alloc_or_collect(
                 // safe bc gen_len > 1
@@ -211,13 +222,14 @@ impl Collector {
                 alloc,
                 roots,
                 did_collect,
+                &masks[1..],
             )
         } else if !did_collect {
             // no more generations left, this is the final generation
-            let r = gens[0].collect(roots);
+            let r = gens[0].collect(roots, &masks[0]);
             // last generation should not promote
             assert!(r.is_empty());
-            Self::alloc_or_collect(gens, alloc, roots, true)
+            Self::alloc_or_collect(gens, alloc, roots, true, masks)
         } else {
             // final generation still out of space
             Err(InterpError::CannotAllocSize(0))
@@ -233,10 +245,11 @@ impl Default for Collector {
 }
 
 impl MemoryManager for Collector {
+    #[allow(clippy::too_many_lines)]
     fn alloc(
         &mut self,
         amount: i64,
-        roots: &[Value],
+        roots: &mut [Value],
     ) -> Result<Value, InterpError> {
         if amount <= 0 {
             return Err(InterpError::CannotAllocSize(amount));
@@ -244,19 +257,30 @@ impl MemoryManager for Collector {
         let amt_u: usize = amount
             .try_into()
             .map_err(|_| InterpError::CannotAllocSize(amount))?;
-        let roots = roots
+        let mut masks = vec![];
+        for i in 0..self.gens.len() {
+            let mut hs = HashSet::new();
+            for g in &self.gens {
+                hs.extend(g.remembered_masks(i as u8));
+            }
+            masks.push(hs.into_iter().collect::<Vec<_>>());
+        }
+        let total_roots = roots
             .iter()
-            .filter_map(|v| match v {
-                Value::Pointer(p) => Some(*p),
-                _ => None,
+            .filter_map(|v| {
+                if let Value::Pointer(p) = v {
+                    Some(*p)
+                } else {
+                    None
+                }
             })
-            .chain(self.gens.iter().flat_map(|g| g.remembered_set()))
             .collect::<Vec<_>>();
         let res = Self::alloc_or_collect(
             &mut self.gens,
             Allocation::New(amt_u),
-            &roots,
+            &total_roots,
             false,
+            &masks,
         )
         .map_err(|_| InterpError::CannotAllocSize(amount))?;
         let mut ret_val = None;
@@ -266,6 +290,13 @@ impl MemoryManager for Collector {
                 AllocationResult::Remap(old_ptr, new_ptr) => {
                     for g in &mut self.gens {
                         g.update_ptr(&old_ptr, new_ptr);
+                    }
+                    for v in roots.iter_mut() {
+                        if let Value::Pointer(p) = v {
+                            if *p == old_ptr {
+                                *p = new_ptr;
+                            }
+                        }
                     }
                 }
             }
@@ -297,19 +328,19 @@ impl MemoryManager for Collector {
 
     fn test(&mut self) -> MemStats {
         let mut stats = MemStats::default();
-        for g in &mut self.gens {
+        for (idx, g) in &mut self.gens.iter_mut().enumerate() {
             // one last collection
             let (num_size, values_allocated) = g.len();
             let gs = GenStats {
                 num_collections: g.num_collections(),
                 num_size,
-                num_remembered_set: g.remembered_set().len(),
+                num_remembered_set: g.num_remembered(idx.try_into().unwrap()),
                 free_space: g.free_space(),
                 values_allocated,
                 num_promotions: g.num_promotions(),
             };
             stats.gen_stats.push(gs);
-            g.collect(&[]);
+            g.collect(&[], &[]);
             stats.memory_leak |= !g.is_empty();
         }
         stats
