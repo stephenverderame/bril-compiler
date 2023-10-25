@@ -1,8 +1,8 @@
 g0: [
 	Number of collections: 0
-	Number of values: 1
+	Number of values: 0
 	Remembered Set: 0
-	Free space: 18446744073709551615
-	Values allocated: 30
+	Free space: 0
+	Values allocated: 0
 	Number of promotions: 0
 ]
