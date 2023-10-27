@@ -73,7 +73,7 @@ pub trait MemoryManager {
     fn test(&mut self) -> MemStats;
 }
 
-const NUM_GENS: usize = 1;
+const NUM_GENS: usize = 2;
 
 /// The generational collector
 pub struct Collector {
@@ -101,9 +101,9 @@ impl Collector {
     pub fn new(g0_size: usize, g1_size: usize, g2_size: usize) -> Self {
         Self {
             gens: [
-                // Box::new(CopyingGen::new(g0_size, 0)),
+                Box::new(CopyingGen::new(g0_size, 0)),
                 // Box::new(CopyingGen::new(g1_size, 1)),
-                Box::new(ElderGen::new(g2_size, 0)),
+                Box::new(ElderGen::new(g2_size, 1)),
             ],
         }
     }
@@ -260,8 +260,8 @@ impl MemoryManager for Collector {
         let mut masks = vec![];
         for i in 0..self.gens.len() {
             let mut hs = HashSet::new();
-            for g in &self.gens {
-                hs.extend(g.remembered_masks(i as u8));
+            for j in i + 1..self.gens.len() {
+                hs.extend(self.gens[j].remembered_masks(i as u8));
             }
             masks.push(hs.into_iter().collect::<Vec<_>>());
         }
@@ -328,13 +328,13 @@ impl MemoryManager for Collector {
 
     fn test(&mut self) -> MemStats {
         let mut stats = MemStats::default();
-        for (idx, g) in &mut self.gens.iter_mut().enumerate() {
+        for g in &mut self.gens {
             // one last collection
             let (num_size, values_allocated) = g.len();
             let gs = GenStats {
                 num_collections: g.num_collections(),
                 num_size,
-                num_remembered_set: g.num_remembered(idx.try_into().unwrap()),
+                num_remembered_set: g.num_remembered(),
                 free_space: g.free_space(),
                 values_allocated,
                 num_promotions: g.num_promotions(),

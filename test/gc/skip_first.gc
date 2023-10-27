@@ -1,4 +1,12 @@
 g0: [
+	Number of collections: 1
+	Number of values: 0
+	Remembered Set: 0
+	Free space: 20
+	Values allocated: 0
+	Number of promotions: 0
+]
+g1: [
 	Number of collections: 0
 	Number of values: 1
 	Remembered Set: 0

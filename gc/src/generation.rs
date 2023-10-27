@@ -54,8 +54,8 @@ pub trait Generation {
     fn num_promotions(&self) -> usize;
 
     /// Returns the number of pointers stored in this generation that point to
-    /// the given heap.
-    fn num_remembered(&self, heap_idx: u8) -> usize;
+    /// a different generation
+    fn num_remembered(&self) -> usize;
 }
 
 const WB_CACHE_SIZE: usize = 256;
@@ -133,10 +133,12 @@ impl WriteBarrier {
         res
     }
 
-    fn num_refs(&self, heap_idx: u8) -> usize {
-        self.remembered_sets
-            .get(&heap_idx)
-            .map_or(0, |cache| cache.iter().sum())
+    fn num_refs(&self) -> usize {
+        let mut refs = 0;
+        for cache in self.remembered_sets.values() {
+            refs += cache.iter().sum::<usize>();
+        }
+        return refs;
     }
 
     fn new(cur_idx: u8) -> Self {
@@ -253,12 +255,12 @@ impl Generation for CopyingGen {
         while let Some(ptr) = to_visit.pop() {
             if !visited.contains(&ptr) {
                 visited.insert(ptr);
-                if let Some(val) = self.allocated.get(&ptr.base) {
+                if let Some(sz) = self.allocated.get(&ptr.base) {
                     #[allow(
                         clippy::cast_possible_truncation,
                         clippy::cast_sign_loss
                     )]
-                    for v in *val..(*val as i64 + ptr.offset) as usize {
+                    for v in ptr.base..ptr.base + sz {
                         let val = &self.space[v];
                         if let Value::Pointer(p) = val {
                             if p.heap_id == self.heap_id {
@@ -271,6 +273,7 @@ impl Generation for CopyingGen {
         }
         let res = visited
             .iter()
+            .filter(|p| p.heap_id == self.heap_id)
             .map(|p| {
                 (*p, {
                     let sz = self.allocated.get(&p.base).unwrap();
@@ -324,8 +327,8 @@ impl Generation for CopyingGen {
         self.wb.remembered_masks(heap_idx)
     }
 
-    fn num_remembered(&self, heap_idx: u8) -> usize {
-        self.wb.num_refs(heap_idx)
+    fn num_remembered(&self) -> usize {
+        self.wb.num_refs()
     }
 
     fn update_ptr(&mut self, old_ptr: &Pointer, new_ptr: Pointer) {
@@ -381,8 +384,8 @@ impl Generation for ElderGen {
         0
     }
 
-    fn num_remembered(&self, heap_idx: u8) -> usize {
-        self.wb.num_refs(heap_idx)
+    fn num_remembered(&self) -> usize {
+        self.wb.num_refs()
     }
 
     fn num_collections(&self) -> usize {
