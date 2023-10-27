@@ -98,7 +98,7 @@ enum AllocationResult {
 
 impl Collector {
     #[must_use]
-    pub fn new(g0_size: usize, g1_size: usize, g2_size: usize) -> Self {
+    pub fn new(g0_size: usize, _g1_size: usize, g2_size: usize) -> Self {
         Self {
             gens: [
                 Box::new(CopyingGen::new(g0_size, 0)),
@@ -235,6 +235,34 @@ impl Collector {
             Err(InterpError::CannotAllocSize(0))
         }
     }
+
+    /// Updates the pointers in the roots and other generations due to
+    /// promotions copying data from younger generations to older generations
+    fn update_remappings(
+        &mut self,
+        res: Vec<AllocationResult>,
+        roots: &mut [Value],
+    ) -> Option<Value> {
+        let mut ret_val: Option<Value> = None;
+        for r in res {
+            match r {
+                AllocationResult::New(p) => ret_val = Some(Value::Pointer(p)),
+                AllocationResult::Remap(old_ptr, new_ptr) => {
+                    for g in &mut self.gens {
+                        g.update_ptr(&old_ptr, new_ptr);
+                    }
+                    for v in roots.iter_mut() {
+                        if let Value::Pointer(p) = v {
+                            if *p == old_ptr {
+                                *p = new_ptr;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ret_val
+    }
 }
 
 impl Default for Collector {
@@ -245,7 +273,6 @@ impl Default for Collector {
 }
 
 impl MemoryManager for Collector {
-    #[allow(clippy::too_many_lines)]
     fn alloc(
         &mut self,
         amount: i64,
@@ -260,8 +287,8 @@ impl MemoryManager for Collector {
         let mut masks = vec![];
         for i in 0..self.gens.len() {
             let mut hs = HashSet::new();
-            for j in i + 1..self.gens.len() {
-                hs.extend(self.gens[j].remembered_masks(i as u8));
+            for g in &self.gens {
+                hs.extend(g.remembered_masks(u8::try_from(i).unwrap()));
             }
             masks.push(hs.into_iter().collect::<Vec<_>>());
         }
@@ -283,25 +310,7 @@ impl MemoryManager for Collector {
             &masks,
         )
         .map_err(|_| InterpError::CannotAllocSize(amount))?;
-        let mut ret_val = None;
-        for r in res {
-            match r {
-                AllocationResult::New(p) => ret_val = Some(Value::Pointer(p)),
-                AllocationResult::Remap(old_ptr, new_ptr) => {
-                    for g in &mut self.gens {
-                        g.update_ptr(&old_ptr, new_ptr);
-                    }
-                    for v in roots.iter_mut() {
-                        if let Value::Pointer(p) = v {
-                            if *p == old_ptr {
-                                *p = new_ptr;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Ok(ret_val.unwrap())
+        Ok(self.update_remappings(res, roots).unwrap())
     }
 
     fn free(&mut self, _: &Pointer) -> Result<(), InterpError> {

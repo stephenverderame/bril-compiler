@@ -78,10 +78,6 @@ impl WriteBarrier {
         self.inc(val);
     }
 
-    fn on_remove(&mut self, val: &Value) {
-        self.dec(val);
-    }
-
     /// Decrements the refcount for a value, `v`, outside this generation.
     fn dec(&mut self, v: &Value) {
         if let Value::Pointer(p) = v {
@@ -138,7 +134,7 @@ impl WriteBarrier {
         for cache in self.remembered_sets.values() {
             refs += cache.iter().sum::<usize>();
         }
-        return refs;
+        refs
     }
 
     fn new(cur_idx: u8) -> Self {
@@ -231,7 +227,6 @@ impl Generation for CopyingGen {
         self.cur_idx == 0
     }
 
-    #[allow(clippy::too_many_lines)]
     fn collect(
         &mut self,
         roots: &[Pointer],
