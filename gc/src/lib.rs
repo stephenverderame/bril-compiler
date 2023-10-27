@@ -7,6 +7,7 @@ mod generation;
 use error::InterpError;
 use generation::{CopyingGen, ElderGen, Generation};
 
+/// Debugging statistics for a single generation
 #[derive(Default, Debug)]
 pub struct GenStats {
     pub num_collections: usize,
@@ -30,6 +31,7 @@ impl std::fmt::Display for GenStats {
     }
 }
 
+/// Debugging statistics for the entire heap
 #[derive(Default, Debug)]
 pub struct MemStats {
     pub gen_stats: Vec<GenStats>,

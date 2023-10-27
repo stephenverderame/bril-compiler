@@ -1,0 +1,9 @@
+@main() {
+    fifty: int = const 50;
+    one: int = const 1;
+    p: ptr<int> = alloc fifty;
+    young: ptr<ptr<int>> = alloc one;
+    store young p;
+    free young;
+    free p;
+}
