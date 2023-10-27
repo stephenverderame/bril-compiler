@@ -1,0 +1,11 @@
+@main() {
+    one: int = const 1;
+    start: ptr<ptr<int>> = alloc one;
+    t5: int = const 25;
+    b: ptr<int> = alloc t5;
+    free b;
+    y: ptr<int> = alloc one;
+    store start y;
+    free y;
+    free start;
+}

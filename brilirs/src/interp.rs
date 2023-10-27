@@ -752,8 +752,8 @@ pub fn execute_main<T: std::io::Write, U: std::io::Write>(
         .ok_or(InterpError::NoMainFunction)?;
 
     let mut env = Environment::new(main_func.num_of_vars);
-    let heap = Heap::default();
-    //let heap = Collector::new(gc_settings.0, gc_settings.1, gc_settings.2);
+    //let heap = Heap::default();
+    let heap = Collector::new(gc_settings.0, gc_settings.1, gc_settings.2);
 
     env = parse_args(env, &main_func.args, &main_func.args_as_nums, input_args)
         .map_err(|e| e.add_pos(main_func.pos.clone()))?;
