@@ -108,7 +108,7 @@ fn initialize_lvn(func: &Function) -> LvnState {
     }
 }
 
-#[compiler_pass]
+#[compiler_pass(all_labels)]
 fn lvn(mut cfg: Cfg, _args: &CLIArgs, func: &Function) -> Cfg {
     let lvn_state = initialize_lvn(func);
     let mut lvn_temp_num = lvn_state.lvn_temp_num;

@@ -362,6 +362,7 @@ impl Cfg {
     /// # Panics
     /// If an internal error occurs
     #[must_use]
+    #[allow(clippy::too_many_lines)]
     pub fn clean(mut self) -> Self {
         let mut visited = HashSet::new();
         let mut q = VecDeque::new();
@@ -373,6 +374,17 @@ impl Cfg {
                 continue;
             }
             visited.insert(reachable);
+            if let CfgNode::Block(blk) = self.blocks.get(&reachable).unwrap() {
+                for (_, instr) in &blk.instrs {
+                    if let Some(lbls) = instr.get_labels() {
+                        for lbl in lbls {
+                            let id =
+                                lbl.split('.').last().unwrap().parse().unwrap();
+                            q.push_back(id);
+                        }
+                    }
+                }
+            }
             match self.adj_lst.get(&reachable) {
                 Some(CfgEdgeTo::Next(next)) => {
                     let new_nxt =
