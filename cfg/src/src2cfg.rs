@@ -252,7 +252,7 @@ impl Cfg {
             adj_lst,
             block_labels: Self::construct_labels_map(labels_map.clone()),
             labels: labels_map,
-            last_instr_id,
+            next_instr_id: last_instr_id,
         }
         .clean_labels()
         .clean()

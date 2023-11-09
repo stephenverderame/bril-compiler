@@ -117,10 +117,10 @@ fn add_phi_to_block(
                 .next()
                 .unwrap()
                 .0;
-            block.instrs.insert(0, (cfg.last_instr_id, phi));
-            live_vars.duplicate_facts(prev_block_starter, cfg.last_instr_id);
-            defined_vars.duplicate_facts(prev_block_starter, cfg.last_instr_id);
-            cfg.last_instr_id += 1;
+            block.instrs.insert(0, (cfg.next_instr_id, phi));
+            live_vars.duplicate_facts(prev_block_starter, cfg.next_instr_id);
+            defined_vars.duplicate_facts(prev_block_starter, cfg.next_instr_id);
+            cfg.next_instr_id += 1;
         }
     }
     cfg
@@ -138,7 +138,7 @@ fn insert_new_start(mut cfg: Cfg, f: &Function) -> Cfg {
     let mut instrs = vec![];
     for arg in &f.args {
         instrs.push((
-            cfg.last_instr_id,
+            cfg.next_instr_id,
             Instruction::Value {
                 op: ValueOps::Id,
                 args: vec![arg.name.clone()],
@@ -149,7 +149,7 @@ fn insert_new_start(mut cfg: Cfg, f: &Function) -> Cfg {
                 op_type: arg.arg_type.clone(),
             },
         ));
-        cfg.last_instr_id += 1;
+        cfg.next_instr_id += 1;
     }
     cfg.blocks.insert(
         new_id,
@@ -534,7 +534,7 @@ fn insert_copies(
         if let CfgNode::Block(blk) = cfg.blocks.get_mut(&blk).unwrap() {
             for (dest, src, op_type, _) in copies {
                 blk.instrs.push((
-                    cfg.last_instr_id,
+                    cfg.next_instr_id,
                     Instruction::Value {
                         op: ValueOps::Id,
                         dest,
@@ -545,7 +545,7 @@ fn insert_copies(
                         op_type,
                     },
                 ));
-                cfg.last_instr_id += 1;
+                cfg.next_instr_id += 1;
             }
         }
     }

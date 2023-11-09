@@ -86,7 +86,8 @@ pub struct Cfg {
     pub adj_lst: HashMap<usize, CfgEdgeTo>,
     pub block_labels: HashMap<usize, Vec<String>>,
     pub labels: HashMap<String, usize>,
-    pub last_instr_id: u64,
+    /// The next instruction id to be used
+    pub next_instr_id: u64,
 }
 
 impl Cfg {
