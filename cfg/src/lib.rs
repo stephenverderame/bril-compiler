@@ -13,6 +13,8 @@ pub use cfg2src::to_src;
 pub const CFG_START_ID: usize = 0;
 /// Id of the end node in the CFG
 pub const CFG_END_ID: usize = CFG_START_ID + 1;
+/// Id of the first free block in the CFG
+pub const CFG_FIRST_FREE_ID: usize = CFG_END_ID + 1;
 
 /// A basic block in the CFG
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -110,6 +112,24 @@ impl Cfg {
             }
         }
         preds
+    }
+}
+
+impl Default for Cfg {
+    fn default() -> Self {
+        let mut blocks = BTreeMap::new();
+        blocks.insert(CFG_START_ID, CfgNode::Start);
+        blocks.insert(CFG_END_ID, CfgNode::End);
+        let mut adj_lst = HashMap::new();
+        adj_lst.insert(CFG_START_ID, CfgEdgeTo::Next(CFG_END_ID));
+        adj_lst.insert(CFG_END_ID, CfgEdgeTo::Terminal);
+        Self {
+            blocks,
+            adj_lst,
+            block_labels: HashMap::new(),
+            labels: HashMap::new(),
+            next_instr_id: 0,
+        }
     }
 }
 
