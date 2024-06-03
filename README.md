@@ -1,8 +1,9 @@
-# CS 6120 BRIL
+# BRIL Compiler Passes
 
 This is a repository containing implementations of 
-analyses, optimizations, and other passes for CS 6120
-using the [Big Red Intermediate Language](https://capra.cs.cornell.edu/bril/intro.html)
+analyses, optimizations, and other passes using 
+the [Big Red Intermediate Language](https://capra.cs.cornell.edu/bril/intro.html).
+Originally for [CS 6120](https://www.cs.cornell.edu/courses/cs6120/2023fa/) at Cornell.
 
 Each of these tools is developed unix style and communicates via the shell.
 
